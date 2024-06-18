@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: video
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+server:
+  servlet:
+    context-path: /api
+data:
+  temp-folder: /media/temp
+  folder: /media/compress_video
+
+
