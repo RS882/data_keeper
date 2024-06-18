@@ -1,5 +1,6 @@
 package neox.video.controllers;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import neox.video.constants.VideoProperties;
@@ -18,6 +19,7 @@ public class VideoController {
 
     @PostMapping
     public ResponseEntity<String> saveNewVideo(
+            @Valid
             VideoDto dto,
             @RequestParam(defaultValue = "HD")
             String quality

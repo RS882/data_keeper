@@ -17,24 +17,15 @@ public enum VideoProperties {
             .maxSize(100_000 * 1024)
             .build()),
     FULL_HD(VideoPropsDto.builder()
-            .videoBitrate(6_000_000)
+            //TODO change to 6_000_000
+            .videoBitrate(1_000_000)
             .width(1920)
             .height(1080)
             .audioBitrate(192_000)
             .frameRate(60)
             .maxSize(200_000 * 1024)
             .build());
-//    HD(4_000_000, 1280, 720,
-//            60, 128_000, 100_000),
-//    FULL_HD(6_000_000, 1920, 1080,
-//            60, 192_000, 200_000);
 
-    //    private final int videoBitrate;
-//    private final int width;
-//    private final int height;
-//    private final double frameRate;
-//    private final int audioBitrate;
-//    private final long maxSize;
     private final VideoPropsDto videoProps;
 
     public static VideoProperties get(String quality) {

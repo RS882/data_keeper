@@ -4,35 +4,36 @@ import lombok.extern.slf4j.Slf4j;
 import neox.video.constants.VideoProperties;
 import neox.video.domain.dto.VideoPropsDto;
 import neox.video.exception_handler.bad_requeat.exceptions.BadFileFormatException;
+import neox.video.exception_handler.bad_requeat.exceptions.BadFileSizeException;
 import neox.video.exception_handler.server_exception.exceptions.UploadException;
 import neox.video.exception_handler.server_exception.exceptions.VideoCompessException;
 import neox.video.services.interfaces.VideoService;
 import org.bytedeco.ffmpeg.global.avcodec;
-import org.bytedeco.ffmpeg.global.avutil;
-
-import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.FFmpegFrameRecorder;
-import org.bytedeco.javacv.Frame;
 
 
-import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.bytedeco.javacv.*;
+
+
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
-import org.bytedeco.opencv.opencv_videoio.VideoCapture;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.videoio.Videoio;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.Array;
+
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.bytedeco.opencv.global.opencv_imgproc.resize;
@@ -43,99 +44,149 @@ public class VideoServiceImpl implements VideoService {
 
     @Value("${data.temp-folder}")
     private String tempFolder;
-    @Value("${data.folder}")
-    private String videoFolder;
 
     @Override
     public void save(MultipartFile file, VideoProperties quality) {
 
+        checkFile(file, quality);
+
         UUID uuid = UUID.randomUUID();
-        String fileName = uuid + ".mp4";
+
         Path tempDir = Paths.get(tempFolder, uuid.toString());
-        Path inputVideoPath = tempDir.resolve(fileName);
-        Path outputVideoPath = tempDir.resolve("compressed_" + fileName);
+        Path outputVideoPath = tempDir.resolve(uuid + ".mp4");
+        Path previewPicturePath = tempDir.resolve(uuid + ".jpeg");
 
         try {
+            Path inputVideoPath = tempDir.resolve(
+                    Objects.requireNonNull(file.getOriginalFilename()));
             Files.createDirectory(tempDir);
             Files.copy(file.getInputStream(), inputVideoPath);
-            compress(inputVideoPath.toString(), outputVideoPath.toString(), file.getOriginalFilename(), quality);
+
+            compress(
+                    inputVideoPath,
+                    outputVideoPath,
+                    file.getOriginalFilename(),
+                    quality);
+
+            savePreviewPictures(outputVideoPath,
+                    previewPicturePath,
+                    file.getOriginalFilename());
+
         } catch (IOException e) {
             log.error("Video didn't upload:{} ", e.getMessage());
-            throw new UploadException(file.getOriginalFilename());
+            throw new UploadException(
+                    String.format("The video file %s cannot be downloaded",
+                            file.getOriginalFilename()));
         }
     }
 
 
     @Override
-    public void compress(String inputFile, String outputFile,
-                         String originalFileName, VideoProperties quality) {
+    public void compress(Path inputFile,
+                         Path outputFile,
+                         String originalFileName,
+                         VideoProperties quality) {
 
 //        FFmpegLogCallback.set();
 //        avutil.av_log_set_level(avutil.AV_LOG_TRACE);
 
-        FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFile);
+        FFmpegFrameGrabber g = new FFmpegFrameGrabber(inputFile.toString());
         FFmpegFrameRecorder recorder = null;
 
         try {
-            grabber.start();
+            g.start();
 
-            int width = grabber.getImageWidth();
-            int height = grabber.getImageHeight();
+            int width = g.getImageWidth();
+            int height = g.getImageHeight();
             int targetWidth = width;
             int targetHeight = height;
-            double frameRate = grabber.getFrameRate();
-//            int vbt = grabber.getVideoBitrate();
-//            int abt = grabber.getAudioBitrate();
-//            log.info("VideoBitrate {}", vbt);
-//            log.info("AudioBitrate {}", abt);
+            double frameRate = g.getFrameRate();
 
-            boolean[] areBitrates = areVideoBitratesValid(
+            boolean areBitratesValid = areVideoBitratesValid(
                     originalFileName,
                     quality,
                     VideoPropsDto.builder()
-                            .audioBitrate(grabber.getAudioBitrate())
-                            .videoBitrate(grabber.getVideoBitrate())
+                            .audioBitrate(g.getAudioBitrate())
+                            .videoBitrate(g.getVideoBitrate())
                             .width(width)
                             .height(height)
                             .frameRate(frameRate)
                             .build()
             );
 
-            recorder = new FFmpegFrameRecorder(outputFile, targetWidth, targetHeight);
-            recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-            recorder.setFormat("mp4");
-            recorder.setFrameRate(frameRate);
-            recorder.setVideoBitrate(quality.getVideoProps().getVideoBitrate());
+            if (areBitratesValid) {
+                g.stop();
+                Files.move(inputFile, outputFile);
+            } else {
+                recorder = new FFmpegFrameRecorder(
+                        outputFile.toString(),
+                        targetWidth,
+                        targetHeight);
 
-            recorder.setAudioChannels(grabber.getAudioChannels());
-            recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
-            recorder.setAudioBitrate(quality.getVideoProps().getAudioBitrate());
+                recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+                recorder.setFormat("mp4");
+                recorder.setFrameRate(frameRate);
+                recorder.setVideoBitrate(quality.getVideoProps().getVideoBitrate());
 
-            recorder.start();
-            Frame frame;
-            while ((frame = grabber.grab()) != null) {
-                recorder.record(frame);
+                recorder.setAudioChannels(g.getAudioChannels());
+                recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
+                recorder.setAudioBitrate(quality.getVideoProps().getAudioBitrate());
+
+                recorder.start();
+
+                Frame frame;
+
+                while ((frame = g.grab()) != null) {
+                    recorder.record(frame);
+
+                }
+//            resizeVideo(g, recorder, targetWidth, targetHeight);
             }
-//            resizeVideo(grabber, recorder, targetWidth, targetHeight);
-
-
         } catch (Exception e) {
             log.error("Video compress  exception:{} ", e.getMessage());
             throw new VideoCompessException(originalFileName);
         } finally {
             try {
-                if (grabber != null) {
-                    grabber.stop();
-                    grabber.release();
+                if (g != null) {
+                    g.stop();
+                    g.release();
                 }
                 if (recorder != null) {
                     recorder.stop();
                     recorder.release();
                 }
+                if (Files.exists(inputFile)) {
+                    Files.delete(inputFile);
+                    log.info("Existing input file <{}> deleted.", inputFile);
+                }
             } catch (Exception e) {
                 log.error("Video compress  exception:{} ", e.getMessage());
                 throw new VideoCompessException(originalFileName);
             }
+        }
+    }
+
+    private static void savePreviewPictures(Path filePath, Path picturePath, String originalFilename) {
+        String filePathStr = filePath.toString();
+
+        try (FFmpegFrameGrabber g = new FFmpegFrameGrabber(filePathStr)) {
+            try (Java2DFrameConverter converter = new Java2DFrameConverter()) {
+
+                g.start();
+                BufferedImage image;
+                for (int i = 0; i < 50; i++) {
+                    image = converter.convert(g.grabKeyFrame());
+                    if (image != null) {
+                        File file = picturePath.toFile();
+                        ImageIO.write(image, "jpeg", file);
+                        break;
+                    }
+                }
+            }
+            g.stop();
+        } catch (Exception e) {
+            throw new UploadException(
+                    String.format("The preview pictute for file  %s cannot be saved", originalFilename));
         }
     }
 
@@ -169,23 +220,22 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
-    private boolean isVideoMp4(String path, String originalFileName) {
-        try (InputStream inputStream = new FileInputStream(path)) {
-            byte[] magicBytes = new byte[12];
-            inputStream.read(magicBytes);
+    private void checkFile(MultipartFile file, VideoProperties quality) {
 
-            byte[] mp4MagicBytes = {(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x20, (byte) 0x66, (byte) 0x74, (byte) 0x79, (byte) 0x70, (byte) 0x69, (byte) 0x73, (byte) 0x6F, (byte) 0x6D};
+        if (file.isEmpty()) throw new BadFileSizeException();
 
-            return Arrays.equals(magicBytes, mp4MagicBytes);
+        if (!file.getContentType().startsWith("video/"))
+            throw new BadFileFormatException(file.getOriginalFilename());
 
-        } catch (IOException e) {
-            throw new BadFileFormatException(originalFileName);
-        }
+        if (file.getSize() > quality.getVideoProps().getMaxSize())
+            throw new BadFileSizeException(
+                    file.getOriginalFilename(),
+                    file.getSize(),
+                    quality.getVideoProps().getMaxSize());
     }
 
-    private boolean[] areVideoBitratesValid(String fileName, VideoProperties quality, VideoPropsDto currentProps) {
+    private boolean areVideoBitratesValid(String fileName, VideoProperties quality, VideoPropsDto currentProps) {
         VideoPropsDto qualityProps = quality.getVideoProps();
-        boolean[] areBitratesValid = {true, true};
 
         if (currentProps.getWidth() > qualityProps.getWidth()) {
             log.warn("Video {} width {} is greater than video width {} for :{}",
@@ -222,7 +272,7 @@ public class VideoServiceImpl implements VideoService {
                     currentProps.getVideoBitrate(),
                     qualityProps.getVideoBitrate(),
                     quality.name());
-            areBitratesValid[0] = false;
+            return false;
         }
         if (currentProps.getAudioBitrate() > qualityProps.getAudioBitrate()) {
             log.warn("Audio {} bitrate {} is greater than Audio bitrate {} for :{}," +
@@ -231,11 +281,10 @@ public class VideoServiceImpl implements VideoService {
                     currentProps.getAudioBitrate(),
                     qualityProps.getAudioBitrate(),
                     quality.name());
-            areBitratesValid[1] = false;
+            return false;
         }
-        return areBitratesValid;
+        return true;
     }
-
 
 }
 
