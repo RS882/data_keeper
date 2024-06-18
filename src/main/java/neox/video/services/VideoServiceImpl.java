@@ -3,6 +3,7 @@ package neox.video.services;
 import lombok.extern.slf4j.Slf4j;
 import neox.video.constants.VideoProperties;
 import neox.video.domain.dto.VideoPropsDto;
+import neox.video.domain.dto.VideoResponseDto;
 import neox.video.exception_handler.bad_requeat.exceptions.BadFileFormatException;
 import neox.video.exception_handler.bad_requeat.exceptions.BadFileSizeException;
 import neox.video.exception_handler.server_exception.exceptions.UploadException;
@@ -32,9 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 
@@ -46,7 +45,7 @@ public class VideoServiceImpl implements VideoService {
     private String tempFolder;
 
     @Override
-    public void save(MultipartFile file, VideoProperties quality) {
+    public VideoResponseDto save(MultipartFile file, VideoProperties quality) {
 
         checkFile(file, quality);
 
@@ -72,6 +71,7 @@ public class VideoServiceImpl implements VideoService {
                     previewPicturePath,
                     file.getOriginalFilename());
 
+            return getPathsMap(outputVideoPath,previewPicturePath,quality);
         } catch (IOException e) {
             log.error("Video didn't upload:{} ", e.getMessage());
             throw new UploadException(
@@ -86,7 +86,6 @@ public class VideoServiceImpl implements VideoService {
                          Path outputFile,
                          String originalFileName,
                          VideoProperties quality) {
-
 //        FFmpegLogCallback.set();
 //        avutil.av_log_set_level(avutil.AV_LOG_TRACE);
 
@@ -284,6 +283,19 @@ public class VideoServiceImpl implements VideoService {
             return false;
         }
         return true;
+    }
+
+    private VideoResponseDto getPathsMap(Path video, Path preview,VideoProperties quality){
+        Map<String,String> paths = new HashMap<>();
+        paths.put("video",toUnixStylePath(video.toString()));
+        paths.put("preview",toUnixStylePath(preview.toString()));
+        Map<VideoProperties, Map<String, String>> dto = new HashMap<>();
+        dto.put(quality, paths);
+
+        return  new VideoResponseDto(dto);
+    }
+    private String toUnixStylePath(String path) {
+        return path.replace("\\", "/");
     }
 
 }
