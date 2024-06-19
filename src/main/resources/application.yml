@@ -16,7 +16,12 @@ minio:
   endpoint: ${MINIO_ENDPOINT}
 
 bucket:
-  name: video
+  name: ${BUCKET_NAME}
+prefix:
+  dir: ${DIR_PREFIX}
+  public: ${PREFIX_PUBLIC}
+  private: ${PREFIX_PRIVATE}
+
 
 
 

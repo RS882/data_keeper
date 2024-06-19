@@ -51,8 +51,18 @@ public class VideoServiceImpl implements VideoService {
     @Value("${bucket.name}")
     private String bucketName;
 
+    @Value("${minio.endpoint}")
+    private String endpoint;
+
+    @Value("${prefix.dir}")
+    private String dirPrefix;
+
+
     private final String VIDEO_FORMAT = "mp4";
     private final String IMAGE_FORMAT = "jpeg";
+
+    private final String PREFIX_PUBLIC = "l29-";
+    private final String PREFIX_PRIVATE = "r76-";
 
     @Override
     public VideoResponseDto save(MultipartFile file, VideoProperties quality) {
@@ -60,13 +70,14 @@ public class VideoServiceImpl implements VideoService {
         checkFile(file, quality);
 
         UUID uuid = UUID.randomUUID();
+
         String videoFileName = uuid + "." + VIDEO_FORMAT;
         String previewPictureName = uuid + "." + IMAGE_FORMAT;
 
         Path tempDir = Paths.get(tempFolder, uuid.toString());
         Path tempOutputVideoPath = tempDir.resolve(videoFileName);
 
-        Path path = Path.of("/" + uuid);
+        Path path = Path.of( dirPrefix, PREFIX_PUBLIC + uuid);
         Path outputVideoPath = path.resolve(videoFileName);
         Path previewPicturePath = path.resolve(previewPictureName);
 
@@ -85,7 +96,7 @@ public class VideoServiceImpl implements VideoService {
                 log.info("Existing input file {} deleted.", tempOutputVideoPath);
             }
 
-            return getPathsMap(tempOutputVideoPath, previewPicturePath, quality);
+            return getPathsMap(outputVideoPath, previewPicturePath, quality);
 
         } catch (IOException e) {
             log.error("Video didn't upload:{} ", e.getMessage());
@@ -244,6 +255,7 @@ public class VideoServiceImpl implements VideoService {
                         .build());
     }
 
+
     private void savePreviewPictures(Path filePath, Path picturePath, String originalFilename) {
         String filePathStr = filePath.toString();
 
@@ -377,12 +389,16 @@ public class VideoServiceImpl implements VideoService {
 
     private VideoResponseDto getPathsMap(Path video, Path preview, VideoProperties quality) {
         Map<String, String> paths = new HashMap<>();
-        paths.put("video", toUnixStylePath(video.toString()));
-        paths.put("preview", toUnixStylePath(preview.toString()));
+        paths.put("video", getFullPath(video));
+        paths.put("preview", getFullPath(preview));
         Map<VideoProperties, Map<String, String>> dto = new HashMap<>();
         dto.put(quality, paths);
 
         return new VideoResponseDto(dto);
+    }
+
+    private String getFullPath(Path path) {
+        return toUnixStylePath(endpoint + "/" + bucketName + path);
     }
 
     private String toUnixStylePath(String path) {
