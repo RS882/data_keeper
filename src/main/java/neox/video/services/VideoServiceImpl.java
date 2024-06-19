@@ -184,7 +184,7 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
-    private String uploadFIle(String objectFile, String outputFile)
+    private void uploadFIle(String objectFile, String outputFile)
             throws ServerException,
             InsufficientDataException, ErrorResponseException,
             IOException, NoSuchAlgorithmException,
@@ -201,7 +201,7 @@ public class VideoServiceImpl implements VideoService {
                         .filename(objectFile)
                         .build()
         );
-        return null;
+
     }
 
     private void uploadFIle(InputStream inputStream, String outputFile)
