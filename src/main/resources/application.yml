@@ -10,6 +10,13 @@ server:
     context-path: /api
 data:
   temp-folder: /media/temp
+minio:
+  accessKey: ${MINIO_ACCESS_KEY}
+  secretKey: ${MINIO_SECRET_KEY}
+  endpoint: ${MINIO_ENDPOINT}
+
+bucket:
+  name: video
 
 
 

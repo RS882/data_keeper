@@ -1,5 +1,6 @@
 package neox.video.controllers;
 
+import io.minio.errors.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -9,6 +10,10 @@ import neox.video.domain.dto.VideoResponseDto;
 import neox.video.services.interfaces.VideoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 
 @RestController
@@ -25,7 +30,7 @@ public class VideoController {
             @RequestParam(defaultValue = "HD")
             String quality
     ) {
-        return ResponseEntity.ok().body(
+    return ResponseEntity.ok().body(
                 service.save(
                         dto.getFile(),
                         VideoProperties.get(quality)));

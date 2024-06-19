@@ -17,8 +17,7 @@ public enum VideoProperties {
             .maxSize(100_000 * 1024)
             .build()),
     FULL_HD(VideoPropsDto.builder()
-            //TODO change to 6_000_000
-            .videoBitrate(1_000_000)
+            .videoBitrate(6_000_000)
             .width(1920)
             .height(1080)
             .audioBitrate(192_000)

@@ -1,5 +1,8 @@
 package neox.video.services;
 
+import io.minio.*;
+import io.minio.errors.*;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import neox.video.constants.VideoProperties;
 import neox.video.domain.dto.VideoPropsDto;
@@ -12,6 +15,7 @@ import neox.video.services.interfaces.VideoService;
 import org.bytedeco.ffmpeg.global.avcodec;
 
 
+import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.*;
 
 
@@ -19,30 +23,36 @@ import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class VideoServiceImpl implements VideoService {
+
+    private final MinioClient minioClient;
 
     @Value("${data.temp-folder}")
     private String tempFolder;
+
+    @Value("${bucket.name}")
+    private String bucketName;
+
+    private final String VIDEO_FORMAT = "mp4";
+    private final String IMAGE_FORMAT = "jpeg";
 
     @Override
     public VideoResponseDto save(MultipartFile file, VideoProperties quality) {
@@ -50,28 +60,33 @@ public class VideoServiceImpl implements VideoService {
         checkFile(file, quality);
 
         UUID uuid = UUID.randomUUID();
+        String videoFileName = uuid + "." + VIDEO_FORMAT;
+        String previewPictureName = uuid + "." + IMAGE_FORMAT;
 
         Path tempDir = Paths.get(tempFolder, uuid.toString());
-        Path outputVideoPath = tempDir.resolve(uuid + ".mp4");
-        Path previewPicturePath = tempDir.resolve(uuid + ".jpeg");
+        Path tempOutputVideoPath = tempDir.resolve(videoFileName);
+
+        Path path = Path.of("/" + uuid);
+        Path outputVideoPath = path.resolve(videoFileName);
+        Path previewPicturePath = path.resolve(previewPictureName);
 
         try {
-            Path inputVideoPath = tempDir.resolve(
-                    Objects.requireNonNull(file.getOriginalFilename()));
             Files.createDirectory(tempDir);
-            Files.copy(file.getInputStream(), inputVideoPath);
 
-            compress(
-                    inputVideoPath,
-                    outputVideoPath,
-                    file.getOriginalFilename(),
-                    quality);
+            compress(file, tempOutputVideoPath, quality, outputVideoPath);
 
-            savePreviewPictures(outputVideoPath,
+            savePreviewPictures(tempOutputVideoPath,
                     previewPicturePath,
                     file.getOriginalFilename());
 
-            return getPathsMap(outputVideoPath,previewPicturePath,quality);
+            if (Files.exists(tempOutputVideoPath)) {
+                Files.delete(tempOutputVideoPath);
+                Files.delete(tempDir);
+                log.info("Existing input file {} deleted.", tempOutputVideoPath);
+            }
+
+            return getPathsMap(tempOutputVideoPath, previewPicturePath, quality);
+
         } catch (IOException e) {
             log.error("Video didn't upload:{} ", e.getMessage());
             throw new UploadException(
@@ -80,84 +95,88 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
-
-    @Override
-    public void compress(Path inputFile,
-                         Path outputFile,
-                         String originalFileName,
-                         VideoProperties quality) {
+    public void compress(MultipartFile file,
+                         Path tempOutputFile,
+                         VideoProperties quality,
+                         Path outputFile) {
 //        FFmpegLogCallback.set();
 //        avutil.av_log_set_level(avutil.AV_LOG_TRACE);
 
-        FFmpegFrameGrabber g = new FFmpegFrameGrabber(inputFile.toString());
+        String originalFileName = file.getOriginalFilename();
+        FFmpegFrameGrabber grabber = null;
         FFmpegFrameRecorder recorder = null;
 
         try {
-            g.start();
+            grabber = new FFmpegFrameGrabber(file.getInputStream());
 
-            int width = g.getImageWidth();
-            int height = g.getImageHeight();
+            grabber.start();
+
+            int width = grabber.getImageWidth();
+            int height = grabber.getImageHeight();
             int targetWidth = width;
             int targetHeight = height;
-            double frameRate = g.getFrameRate();
+            double frameRate = grabber.getFrameRate();
+            int videoBitrate = grabber.getVideoBitrate();
+            int audioBitrate = grabber.getAudioBitrate();
 
-            boolean areBitratesValid = areVideoBitratesValid(
+            boolean[] areBitratesValid = areVideoBitratesValid(
                     originalFileName,
                     quality,
                     VideoPropsDto.builder()
-                            .audioBitrate(g.getAudioBitrate())
-                            .videoBitrate(g.getVideoBitrate())
+                            .audioBitrate(audioBitrate)
+                            .videoBitrate(videoBitrate)
                             .width(width)
                             .height(height)
                             .frameRate(frameRate)
                             .build()
             );
 
-            if (areBitratesValid) {
-                g.stop();
-                Files.move(inputFile, outputFile);
+            if (areBitratesValid[0] && areBitratesValid[1]) {
+                grabber.stop();
+                Files.copy(file.getInputStream(), tempOutputFile);
             } else {
                 recorder = new FFmpegFrameRecorder(
-                        outputFile.toString(),
+                        tempOutputFile.toString(),
                         targetWidth,
                         targetHeight);
 
                 recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-                recorder.setFormat("mp4");
+                recorder.setFormat(VIDEO_FORMAT);
                 recorder.setFrameRate(frameRate);
-                recorder.setVideoBitrate(quality.getVideoProps().getVideoBitrate());
+                recorder.setVideoBitrate(
+                        areBitratesValid[0] ?
+                                videoBitrate :
+                                quality.getVideoProps().getVideoBitrate());
 
-                recorder.setAudioChannels(g.getAudioChannels());
+                recorder.setAudioChannels(grabber.getAudioChannels());
                 recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
-                recorder.setAudioBitrate(quality.getVideoProps().getAudioBitrate());
-
+                recorder.setAudioBitrate(
+                        areBitratesValid[1] ?
+                                audioBitrate :
+                                quality.getVideoProps().getAudioBitrate());
                 recorder.start();
 
                 Frame frame;
-
-                while ((frame = g.grab()) != null) {
+                while ((frame = grabber.grab()) != null) {
                     recorder.record(frame);
-
                 }
-//            resizeVideo(g, recorder, targetWidth, targetHeight);
+//            resizeVideo(grabber, recorder, targetWidth, targetHeight);
             }
         } catch (Exception e) {
             log.error("Video compress  exception:{} ", e.getMessage());
             throw new VideoCompessException(originalFileName);
         } finally {
             try {
-                if (g != null) {
-                    g.stop();
-                    g.release();
+                if (grabber != null) {
+                    grabber.stop();
+                    grabber.release();
                 }
                 if (recorder != null) {
                     recorder.stop();
                     recorder.release();
                 }
-                if (Files.exists(inputFile)) {
-                    Files.delete(inputFile);
-                    log.info("Existing input file <{}> deleted.", inputFile);
-                }
+                uploadFIle(tempOutputFile.toString(), outputFile.toString());
+
             } catch (Exception e) {
                 log.error("Video compress  exception:{} ", e.getMessage());
                 throw new VideoCompessException(originalFileName);
@@ -165,27 +184,98 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
-    private static void savePreviewPictures(Path filePath, Path picturePath, String originalFilename) {
+    private String uploadFIle(String objectFile, String outputFile)
+            throws ServerException,
+            InsufficientDataException, ErrorResponseException,
+            IOException, NoSuchAlgorithmException,
+            InvalidKeyException, InvalidResponseException,
+            XmlParserException, InternalException {
+
+        checkAndCreateBucket(bucketName);
+
+        minioClient.uploadObject(
+                UploadObjectArgs
+                        .builder()
+                        .bucket(bucketName)
+                        .object(toUnixStylePath(outputFile))
+                        .filename(objectFile)
+                        .build()
+        );
+        return null;
+    }
+
+    private void uploadFIle(InputStream inputStream, String outputFile)
+            throws ServerException,
+            InsufficientDataException, ErrorResponseException,
+            IOException, NoSuchAlgorithmException,
+            InvalidKeyException, InvalidResponseException,
+            XmlParserException, InternalException {
+
+        checkAndCreateBucket(bucketName);
+
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(toUnixStylePath(outputFile))
+                        .stream(inputStream, inputStream.available(), -1)
+                        .contentType("image/" + IMAGE_FORMAT)
+                        .build()
+        );
+    }
+
+    private void checkAndCreateBucket(String bucketName)
+            throws ServerException,
+            InsufficientDataException, ErrorResponseException,
+            IOException, NoSuchAlgorithmException,
+            InvalidKeyException, InvalidResponseException,
+            XmlParserException, InternalException {
+
+        boolean found = minioClient
+                .bucketExists(
+                        BucketExistsArgs
+                                .builder()
+                                .bucket(bucketName)
+                                .build());
+        if (!found) minioClient.makeBucket(
+                MakeBucketArgs
+                        .builder()
+                        .bucket(bucketName)
+                        .objectLock(true)
+                        .build());
+    }
+
+    private void savePreviewPictures(Path filePath, Path picturePath, String originalFilename) {
         String filePathStr = filePath.toString();
 
-        try (FFmpegFrameGrabber g = new FFmpegFrameGrabber(filePathStr)) {
+        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(filePathStr)) {
+            BufferedImage image = null;
             try (Java2DFrameConverter converter = new Java2DFrameConverter()) {
 
-                g.start();
-                BufferedImage image;
+                grabber.start();
+
                 for (int i = 0; i < 50; i++) {
-                    image = converter.convert(g.grabKeyFrame());
+                    image = converter.convert(grabber.grabKeyFrame());
                     if (image != null) {
-                        File file = picturePath.toFile();
-                        ImageIO.write(image, "jpeg", file);
                         break;
                     }
                 }
             }
-            g.stop();
+            grabber.stop();
+
+            if (image != null) {
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, IMAGE_FORMAT, baos);
+                baos.flush();
+
+                ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+
+                uploadFIle(bais, picturePath.toString());
+
+            }
         } catch (Exception e) {
             throw new UploadException(
-                    String.format("The preview pictute for file  %s cannot be saved", originalFilename));
+                    String.format("The preview picture for file  %s cannot be saved", originalFilename));
         }
     }
 
@@ -233,9 +323,9 @@ public class VideoServiceImpl implements VideoService {
                     quality.getVideoProps().getMaxSize());
     }
 
-    private boolean areVideoBitratesValid(String fileName, VideoProperties quality, VideoPropsDto currentProps) {
+    private boolean[] areVideoBitratesValid(String fileName, VideoProperties quality, VideoPropsDto currentProps) {
         VideoPropsDto qualityProps = quality.getVideoProps();
-
+        boolean[] result = {true, true};
         if (currentProps.getWidth() > qualityProps.getWidth()) {
             log.warn("Video {} width {} is greater than video width {} for :{}",
                     fileName,
@@ -265,35 +355,36 @@ public class VideoServiceImpl implements VideoService {
                     quality.name());
         }
         if (currentProps.getVideoBitrate() > qualityProps.getVideoBitrate()) {
-            log.warn("Video {} bitrate {} is greater than video bitrate {} for :{}," +
-                            "video will be modified",
+            log.warn("Video {} bitrate {} is greater than video bitrate {} for :{}. " +
+                            "Video will be modified",
                     fileName,
                     currentProps.getVideoBitrate(),
                     qualityProps.getVideoBitrate(),
                     quality.name());
-            return false;
+            result[0] = false;
         }
         if (currentProps.getAudioBitrate() > qualityProps.getAudioBitrate()) {
-            log.warn("Audio {} bitrate {} is greater than Audio bitrate {} for :{}," +
-                            "video will be modified",
+            log.warn("Audio {} bitrate {} is greater than Audio bitrate {} for :{}. " +
+                            "Video will be modified",
                     fileName,
                     currentProps.getAudioBitrate(),
                     qualityProps.getAudioBitrate(),
                     quality.name());
-            return false;
+            result[1] = false;
         }
-        return true;
+        return result;
     }
 
-    private VideoResponseDto getPathsMap(Path video, Path preview,VideoProperties quality){
-        Map<String,String> paths = new HashMap<>();
-        paths.put("video",toUnixStylePath(video.toString()));
-        paths.put("preview",toUnixStylePath(preview.toString()));
+    private VideoResponseDto getPathsMap(Path video, Path preview, VideoProperties quality) {
+        Map<String, String> paths = new HashMap<>();
+        paths.put("video", toUnixStylePath(video.toString()));
+        paths.put("preview", toUnixStylePath(preview.toString()));
         Map<VideoProperties, Map<String, String>> dto = new HashMap<>();
         dto.put(quality, paths);
 
-        return  new VideoResponseDto(dto);
+        return new VideoResponseDto(dto);
     }
+
     private String toUnixStylePath(String path) {
         return path.replace("\\", "/");
     }
