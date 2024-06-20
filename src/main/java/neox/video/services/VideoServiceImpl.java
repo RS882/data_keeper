@@ -5,6 +5,7 @@ import io.minio.errors.*;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import neox.video.constants.MediaFormats;
 import neox.video.constants.VideoProperties;
 import neox.video.domain.dto.VideoPropsDto;
 import neox.video.domain.dto.VideoResponseDto;
@@ -13,6 +14,7 @@ import neox.video.exception_handler.bad_requeat.exceptions.BadFileSizeException;
 import neox.video.exception_handler.server_exception.exceptions.UploadException;
 import neox.video.exception_handler.server_exception.exceptions.VideoCompessException;
 import neox.video.exception_handler.server_exception.exceptions.MinioGetUrlException;
+import neox.video.services.interfaces.DataStorageService;
 import neox.video.services.interfaces.VideoService;
 import org.bytedeco.ffmpeg.global.avcodec;
 
@@ -40,9 +42,7 @@ import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class VideoServiceImpl implements VideoService {
-
-    private final MinioClient minioClient;
+public class VideoServiceImpl implements VideoService, MediaFormats {
 
     @Value("${data.temp-folder}")
     private String tempFolder;
@@ -62,11 +62,7 @@ public class VideoServiceImpl implements VideoService {
     @Value("${prefix.public}")
     private String prefixPublic;
 
-    @Value("${lifetime.url}")
-    private int urlLifeTime;
-
-    private final String VIDEO_FORMAT = "mp4";
-    private final String IMAGE_FORMAT = "jpeg";
+    private final DataStorageService dataStorageService;
 
     @Override
     public VideoResponseDto save(
@@ -193,117 +189,12 @@ public class VideoServiceImpl implements VideoService {
                     recorder.stop();
                     recorder.release();
                 }
-                uploadFIle(tempOutputFile.toString(), outputFile.toString());
+                dataStorageService.uploadFIle(tempOutputFile.toString(), outputFile.toString());
 
             } catch (Exception e) {
                 log.error("Video compress  exception:{} ", e.getMessage());
                 throw new VideoCompessException(originalFileName);
             }
-        }
-    }
-
-    private void uploadFIle(String objectFile, String outputFile)
-            throws ServerException,
-            InsufficientDataException, ErrorResponseException,
-            IOException, NoSuchAlgorithmException,
-            InvalidKeyException, InvalidResponseException,
-            XmlParserException, InternalException {
-
-        checkAndCreateBucket(bucketName);
-
-        minioClient.uploadObject(
-                UploadObjectArgs
-                        .builder()
-                        .bucket(bucketName)
-                        .object(toUnixStylePath(outputFile))
-                        .filename(objectFile)
-                        .build()
-        );
-
-    }
-
-    private void uploadFIle(InputStream inputStream, String outputFile)
-            throws ServerException,
-            InsufficientDataException, ErrorResponseException,
-            IOException, NoSuchAlgorithmException,
-            InvalidKeyException, InvalidResponseException,
-            XmlParserException, InternalException {
-
-        checkAndCreateBucket(bucketName);
-
-        minioClient.putObject(
-                PutObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(toUnixStylePath(outputFile))
-                        .stream(inputStream, inputStream.available(), -1)
-                        .contentType("image/" + IMAGE_FORMAT)
-                        .build()
-        );
-    }
-
-    private void checkAndCreateBucket(String bucketName)
-            throws ServerException,
-            InsufficientDataException, ErrorResponseException,
-            IOException, NoSuchAlgorithmException,
-            InvalidKeyException, InvalidResponseException,
-            XmlParserException, InternalException {
-
-        boolean found = minioClient
-                .bucketExists(
-                        BucketExistsArgs
-                                .builder()
-                                .bucket(bucketName)
-                                .build());
-        if (!found) {
-            minioClient.makeBucket(
-                    MakeBucketArgs
-                            .builder()
-                            .bucket(bucketName)
-                            .objectLock(true)
-                            .build());
-
-            StringBuilder builder = new StringBuilder();
-
-            builder.append("{\n");
-            builder.append("  \"Version\": \"2012-10-17\",\n");
-            builder.append("  \"Statement\": [\n");
-            builder.append("    {\n");
-            builder.append("      \"Effect\": \"Allow\",\n");
-            builder.append("      \"Principal\": {\n");
-            builder.append("        \"AWS\": [\n");
-            builder.append("          \"*\"\n");
-            builder.append("        ]\n");
-            builder.append("      },\n");
-            builder.append("      \"Action\": [\n");
-            builder.append("        \"s3:GetBucketLocation\",\n");
-            builder.append("        \"s3:ListBucket\"\n");
-            builder.append("      ],\n");
-            builder.append("      \"Resource\": [\n");
-            builder.append("        \"arn:aws:s3:::video\"\n");
-            builder.append("      ]\n");
-            builder.append("    },\n");
-            builder.append("    {\n");
-            builder.append("      \"Effect\": \"Allow\",\n");
-            builder.append("      \"Principal\": {\n");
-            builder.append("        \"AWS\": [\n");
-            builder.append("          \"*\"\n");
-            builder.append("        ]\n");
-            builder.append("      },\n");
-            builder.append("      \"Action\": [\n");
-            builder.append("        \"s3:GetObject\"\n");
-            builder.append("      ],\n");
-            builder.append("      \"Resource\": [\n");
-            builder.append("        \"arn:aws:s3:::video/*/").append(prefixPublic).append("*\"\n");
-            builder.append("      ]\n");
-            builder.append("    }\n");
-            builder.append("  ]\n");
-            builder.append("}");
-
-            minioClient.setBucketPolicy(
-                    SetBucketPolicyArgs
-                            .builder()
-                            .bucket(bucketName)
-                            .config(builder.toString()).build());
         }
     }
 
@@ -334,7 +225,7 @@ public class VideoServiceImpl implements VideoService {
 
                 ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 
-                uploadFIle(bais, picturePath.toString());
+                dataStorageService.uploadFIle(bais, picturePath.toString());
 
             }
         } catch (Exception e) {
@@ -461,25 +352,10 @@ public class VideoServiceImpl implements VideoService {
         try {
             return isPublic ?
                     toUnixStylePath(endpoint + "/" + bucketName + "/" + path) :
-                    getTempFullPath(path.toString());
+                    dataStorageService.getTempFullPath(path.toString());
         } catch (Exception e) {
             throw new MinioGetUrlException("something went wrong...");
         }
-    }
-
-    private String getTempFullPath(String path)
-            throws ServerException, InsufficientDataException,
-            ErrorResponseException, IOException, NoSuchAlgorithmException,
-            InvalidKeyException, InvalidResponseException, XmlParserException,
-            InternalException {
-        return minioClient.getPresignedObjectUrl(
-                GetPresignedObjectUrlArgs
-                        .builder()
-                        .method(Method.GET)
-                        .bucket(bucketName)
-                        .object(toUnixStylePath(path))
-                        .expiry(urlLifeTime, TimeUnit.MINUTES)
-                        .build());
     }
 
     private String toUnixStylePath(String path) {

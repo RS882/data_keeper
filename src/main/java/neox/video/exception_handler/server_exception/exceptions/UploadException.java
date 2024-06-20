@@ -1,8 +1,8 @@
 package neox.video.exception_handler.server_exception.exceptions;
 
-import neox.video.exception_handler.server_exception.ServerException;
+import neox.video.exception_handler.server_exception.ServerIOException;
 
-public class UploadException extends ServerException {
+public class UploadException extends ServerIOException {
     public UploadException(String message) {
         super(message);
     }

@@ -5,10 +5,9 @@ import neox.video.domain.dto.ResponseMessageDto;
 import neox.video.exception_handler.dto.ValidationErrorDto;
 import neox.video.exception_handler.dto.ValidationErrorsDto;
 import neox.video.exception_handler.not_found.NotFoundException;
-import neox.video.exception_handler.server_exception.ServerException;
+import neox.video.exception_handler.server_exception.ServerIOException;
 import neox.video.exception_handler.bad_requeat.BadRequestException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -24,8 +23,8 @@ import java.util.List;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ServerException.class)
-    public ResponseEntity<ResponseMessageDto> handleException(ServerException e) {
+    @ExceptionHandler(ServerIOException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(ServerIOException e) {
         return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
