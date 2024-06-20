@@ -8,6 +8,7 @@ spring:
 server:
   servlet:
     context-path: /api
+  port: 8200
 data:
   temp-folder: /media/temp
 minio:
@@ -21,6 +22,8 @@ prefix:
   dir: ${DIR_PREFIX}
   public: ${PREFIX_PUBLIC}
   private: ${PREFIX_PRIVATE}
+lifetime:
+  url: ${LIFETIME_URL:3}
 
 
 

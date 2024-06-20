@@ -2,6 +2,7 @@ package neox.video.services;
 
 import io.minio.*;
 import io.minio.errors.*;
+import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import neox.video.constants.VideoProperties;
@@ -11,17 +12,14 @@ import neox.video.exception_handler.bad_requeat.exceptions.BadFileFormatExceptio
 import neox.video.exception_handler.bad_requeat.exceptions.BadFileSizeException;
 import neox.video.exception_handler.server_exception.exceptions.UploadException;
 import neox.video.exception_handler.server_exception.exceptions.VideoCompessException;
+import neox.video.exception_handler.server_exception.exceptions.MinioGetUrlException;
 import neox.video.services.interfaces.VideoService;
 import org.bytedeco.ffmpeg.global.avcodec;
 
-
 import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.*;
-
-
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +33,7 @@ import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 
@@ -57,15 +56,23 @@ public class VideoServiceImpl implements VideoService {
     @Value("${prefix.dir}")
     private String dirPrefix;
 
+    @Value("${prefix.private}")
+    private String prefixPrivate;
+
+    @Value("${prefix.public}")
+    private String prefixPublic;
+
+    @Value("${lifetime.url}")
+    private int urlLifeTime;
 
     private final String VIDEO_FORMAT = "mp4";
     private final String IMAGE_FORMAT = "jpeg";
 
-    private final String PREFIX_PUBLIC = "l29-";
-    private final String PREFIX_PRIVATE = "r76-";
-
     @Override
-    public VideoResponseDto save(MultipartFile file, VideoProperties quality) {
+    public VideoResponseDto save(
+            MultipartFile file,
+            VideoProperties quality,
+            boolean isPublic) {
 
         checkFile(file, quality);
 
@@ -77,7 +84,7 @@ public class VideoServiceImpl implements VideoService {
         Path tempDir = Paths.get(tempFolder, uuid.toString());
         Path tempOutputVideoPath = tempDir.resolve(videoFileName);
 
-        Path path = Path.of( dirPrefix, PREFIX_PUBLIC + uuid);
+        Path path = Path.of(dirPrefix, isPublic ? prefixPublic : prefixPrivate + uuid);
         Path outputVideoPath = path.resolve(videoFileName);
         Path previewPicturePath = path.resolve(previewPictureName);
 
@@ -96,7 +103,7 @@ public class VideoServiceImpl implements VideoService {
                 log.info("Existing input file {} deleted.", tempOutputVideoPath);
             }
 
-            return getPathsMap(outputVideoPath, previewPicturePath, quality);
+            return getPathsMap(outputVideoPath, previewPicturePath, quality, isPublic);
 
         } catch (IOException e) {
             log.error("Video didn't upload:{} ", e.getMessage());
@@ -247,12 +254,57 @@ public class VideoServiceImpl implements VideoService {
                                 .builder()
                                 .bucket(bucketName)
                                 .build());
-        if (!found) minioClient.makeBucket(
-                MakeBucketArgs
-                        .builder()
-                        .bucket(bucketName)
-                        .objectLock(true)
-                        .build());
+        if (!found) {
+            minioClient.makeBucket(
+                    MakeBucketArgs
+                            .builder()
+                            .bucket(bucketName)
+                            .objectLock(true)
+                            .build());
+
+            StringBuilder builder = new StringBuilder();
+
+            builder.append("{\n");
+            builder.append("  \"Version\": \"2012-10-17\",\n");
+            builder.append("  \"Statement\": [\n");
+            builder.append("    {\n");
+            builder.append("      \"Effect\": \"Allow\",\n");
+            builder.append("      \"Principal\": {\n");
+            builder.append("        \"AWS\": [\n");
+            builder.append("          \"*\"\n");
+            builder.append("        ]\n");
+            builder.append("      },\n");
+            builder.append("      \"Action\": [\n");
+            builder.append("        \"s3:GetBucketLocation\",\n");
+            builder.append("        \"s3:ListBucket\"\n");
+            builder.append("      ],\n");
+            builder.append("      \"Resource\": [\n");
+            builder.append("        \"arn:aws:s3:::video\"\n");
+            builder.append("      ]\n");
+            builder.append("    },\n");
+            builder.append("    {\n");
+            builder.append("      \"Effect\": \"Allow\",\n");
+            builder.append("      \"Principal\": {\n");
+            builder.append("        \"AWS\": [\n");
+            builder.append("          \"*\"\n");
+            builder.append("        ]\n");
+            builder.append("      },\n");
+            builder.append("      \"Action\": [\n");
+            builder.append("        \"s3:GetObject\"\n");
+            builder.append("      ],\n");
+            builder.append("      \"Resource\": [\n");
+            builder.append("        \"arn:aws:s3:::video/*/").append(prefixPublic).append("*\"\n");
+            builder.append("      ]\n");
+            builder.append("    }\n");
+            builder.append("  ]\n");
+            builder.append("}");
+
+            minioClient.setBucketPolicy(
+                    SetBucketPolicyArgs
+                            .builder()
+                            .bucket(bucketName)
+                            .config(builder.toString()).build());
+        }
     }
 
 
@@ -387,23 +439,51 @@ public class VideoServiceImpl implements VideoService {
         return result;
     }
 
-    private VideoResponseDto getPathsMap(Path video, Path preview, VideoProperties quality) {
+    private VideoResponseDto getPathsMap(
+            Path video,
+            Path preview,
+            VideoProperties quality,
+            boolean isPublic) {
+
+        String postfix = isPublic ? "" : "_temp";
+
         Map<String, String> paths = new HashMap<>();
-        paths.put("video", getFullPath(video));
-        paths.put("preview", getFullPath(preview));
+        paths.put("video" + postfix, getFullPath(video, isPublic));
+        paths.put("preview" + postfix, getFullPath(preview, isPublic));
+
         Map<VideoProperties, Map<String, String>> dto = new HashMap<>();
         dto.put(quality, paths);
 
         return new VideoResponseDto(dto);
     }
 
-    private String getFullPath(Path path) {
-        return toUnixStylePath(endpoint + "/" + bucketName + path);
+    private String getFullPath(Path path, boolean isPublic) {
+        try {
+            return isPublic ?
+                    toUnixStylePath(endpoint + "/" + bucketName + "/" + path) :
+                    getTempFullPath(path.toString());
+        } catch (Exception e) {
+            throw new MinioGetUrlException("something went wrong...");
+        }
+    }
+
+    private String getTempFullPath(String path)
+            throws ServerException, InsufficientDataException,
+            ErrorResponseException, IOException, NoSuchAlgorithmException,
+            InvalidKeyException, InvalidResponseException, XmlParserException,
+            InternalException {
+        return minioClient.getPresignedObjectUrl(
+                GetPresignedObjectUrlArgs
+                        .builder()
+                        .method(Method.GET)
+                        .bucket(bucketName)
+                        .object(toUnixStylePath(path))
+                        .expiry(urlLifeTime, TimeUnit.MINUTES)
+                        .build());
     }
 
     private String toUnixStylePath(String path) {
         return path.replace("\\", "/");
     }
-
 }
 

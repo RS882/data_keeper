@@ -28,11 +28,13 @@ public class VideoController {
             @Valid
             VideoDto dto,
             @RequestParam(defaultValue = "HD")
-            String quality
-    ) {
-    return ResponseEntity.ok().body(
+            String quality,
+            @RequestParam(defaultValue = "true")
+            boolean isPublic) {
+        return ResponseEntity.ok().body(
                 service.save(
                         dto.getFile(),
-                        VideoProperties.get(quality)));
+                        VideoProperties.get(quality),
+                        isPublic));
     }
 }

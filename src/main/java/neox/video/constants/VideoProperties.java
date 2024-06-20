@@ -12,7 +12,8 @@ public enum VideoProperties {
             .videoBitrate(4_000_000)
             .width(1280)
             .height(720)
-            .audioBitrate(128_000)
+            //TODO
+            .audioBitrate(130_000)
             .frameRate(60)
             .maxSize(100_000 * 1024)
             .build()),
