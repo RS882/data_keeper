@@ -8,14 +8,11 @@ spring:
 server:
   servlet:
     context-path: /api
-  port: 8200
+  port: ${PORT:8080}
 data:
   temp-folder: ${TEMP_FOLDER:/media/temp}
-minio:
-  accessKey: ${MINIO_ACCESS_KEY}
-  secretKey: ${MINIO_SECRET_KEY}
-  endpoint: ${MINIO_ENDPOINT}
-
+storage:
+  url: ${STORAGE_URL}
 bucket:
   name: ${BUCKET_NAME}
 prefix:
@@ -24,6 +21,9 @@ prefix:
   private: ${PREFIX_PRIVATE}
 lifetime:
   url: ${LIFETIME_URL:3}
+minio:
+  accessKey: ${MINIO_ACCESS_KEY}
+  secretKey: ${MINIO_SECRET_KEY}
 
 
 

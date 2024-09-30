@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+import static compress.video.services.utilities.FileUtilities.toUnixStylePath;
 import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 
 @Service
@@ -43,8 +44,8 @@ public class VideoServiceImpl implements VideoService, MediaFormats {
     @Value("${bucket.name}")
     private String bucketName;
 
-    @Value("${minio.endpoint}")
-    private String endpoint;
+    @Value("${storage.url}")
+    private String storageUrl;
 
     @Value("${prefix.dir}")
     private String dirPrefix;
@@ -344,15 +345,13 @@ public class VideoServiceImpl implements VideoService, MediaFormats {
     private String getFullPath(Path path, boolean isPublic) {
         try {
             return isPublic ?
-                    toUnixStylePath(endpoint + "/" + bucketName + "/" + path) :
+                    toUnixStylePath( storageUrl+ "/" + bucketName + "/" + path) :
                     dataStorageService.getTempFullPath(path.toString());
         } catch (Exception e) {
             throw new MinioGetUrlException("something went wrong...");
         }
     }
 
-    private String toUnixStylePath(String path) {
-        return path.replace("\\", "/");
-    }
+
 }
 

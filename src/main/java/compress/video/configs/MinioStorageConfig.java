@@ -13,13 +13,13 @@ public class MinioStorageConfig {
     private String accessKey;
     @Value("${minio.secretKey}")
     private String secretKey;
-    @Value("${minio.endpoint}")
-    private String endpoint;
+    @Value("${storage.url}")
+    private String minioUrl;
 
     @Bean
     public MinioClient minioClient() {
         return MinioClient.builder()
-                .endpoint(endpoint)
+                .endpoint(minioUrl)
                 .credentials(accessKey, secretKey)
                 .build();
     }
