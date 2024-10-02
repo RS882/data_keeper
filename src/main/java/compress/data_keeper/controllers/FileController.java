@@ -1,0 +1,24 @@
+package compress.data_keeper.controllers;
+
+import compress.data_keeper.controllers.API.FileAPI;
+import compress.data_keeper.domain.dto.files.FileCreationDto;
+import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.services.interfaces.FileService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequiredArgsConstructor
+public class FileController implements FileAPI {
+
+    private final FileService fileService;
+
+    @Override
+    public ResponseEntity<FileResponseDto> uploadFile(FileCreationDto fileCreationDto) {
+
+        return ResponseEntity.ok(fileService.uploadFile(fileCreationDto.getFile()));
+    }
+}
