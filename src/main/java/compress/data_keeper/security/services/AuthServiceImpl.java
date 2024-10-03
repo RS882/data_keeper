@@ -1,17 +1,16 @@
 package compress.data_keeper.security.services;
 
 import compress.data_keeper.domain.User;
-import io.jsonwebtoken.Claims;
+import compress.data_keeper.exception_handler.authentication_exception.WrongTokenException;
+import compress.data_keeper.exception_handler.forbidden.exceptions.LimitOfLoginsException;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
 import compress.data_keeper.security.domain.dto.TokensDto;
 import compress.data_keeper.security.domain.dto.ValidationResponseDto;
-
-import compress.data_keeper.exception_handler.authentication_exception.WrongTokenException;
-import compress.data_keeper.exception_handler.forbidden.exceptions.LimitOfLoginsException;
 import compress.data_keeper.security.services.interfaces.AuthService;
-import compress.data_keeper.security.services.interfaces.CustomUserDetailsService;
 import compress.data_keeper.security.services.mapping.TokenDtoMapperService;
+import compress.data_keeper.services.interfaces.UserService;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -29,7 +28,7 @@ import static compress.data_keeper.security.services.TokenService.USER_ROLE_VARI
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final CustomUserDetailsService userDetailsService;
+    private final UserService userService;
     private final PasswordEncoder encoder;
     private final TokenService tokenService;
     private final TokenDtoMapperService tokenDtoMapperService;
@@ -37,14 +36,13 @@ public class AuthServiceImpl implements AuthService {
     public static final int MAX_COUNT_OF_LOGINS = 5;
 
     @Override
-    public TokensDto login(LoginDto loginDto) {
-        String email = loginDto.getEmail();
-        User user = (User) userDetailsService.loadUserByUsername(email);
-        checkLoginBlockedTime(user);
-        if (!encoder.matches(loginDto.getPassword(), user.getPassword()))
+    public TokensDto login(LoginDto loginDto, User currentUser) {
+        checkLoginBlockedTime(currentUser);
+        if (!encoder.matches(loginDto.getPassword(), currentUser.getPassword())) {
             throw new BadCredentialsException("Wrong password");
-        setLoginBlockedTime(user);
-        return tokenService.getTokens(user);
+        }
+        setLoginBlockedTime(currentUser);
+        return tokenService.getTokens(currentUser);
     }
 
     @Override
@@ -54,7 +52,7 @@ public class AuthServiceImpl implements AuthService {
             throw new WrongTokenException("Token is incorrect");
 
         Claims claims = tokenService.getRefreshTokenClaims(inboundRefreshToken);
-        User user = (User) userDetailsService.loadUserByUsername(claims.getSubject());
+        User user = userService.getUserByEmail(claims.getSubject());
         List<String> refreshTokens = tokenService.getRefreshTokensByUserId(user.getId());
 
         if (!refreshTokens.contains(inboundRefreshToken))
@@ -70,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
 
         String token = authorizationHeader.substring(7);
         Claims claims = tokenService.getAccessTokenClaims(token);
-        User user = (User) userDetailsService.loadUserByUsername(claims.getSubject());
+        User user = userService.getUserByEmail(claims.getSubject());
 
         return ValidationResponseDto.builder()
                 .isAuthorized(true)
@@ -99,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
             refreshTokens.forEach(tokenService::removeOldRefreshToken);
 
             user.setLoginBlockedUntil(LocalDateTime.now().plusMinutes(5));
-            userDetailsService.updateUser(user);
+            userService.saveUser(user);
 
             log.warn("User {} has limit of logins :{}.", userId,MAX_COUNT_OF_LOGINS);
             log.warn("User {} logins blocked until:{}.", userId,user.getLoginBlockedUntil());

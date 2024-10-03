@@ -1,26 +1,24 @@
 package compress.data_keeper.security.domain;
 
-import compress.data_keeper.security.contstants.Role;
+import compress.data_keeper.domain.User;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
-import java.util.Set;
+import java.util.Collections;
 
 public class AuthInfo implements Authentication {
 
     private Boolean authenticated;
-    private String userEmail;
-    private Set<Role> roles;
+    private User user;
 
-    public AuthInfo(String userEmail, Set<Role> roles) {
-        this.userEmail = userEmail;
-        this.roles = roles;
+    public AuthInfo(User user) {
+        this.user = user;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles;
+        return Collections.singleton(user.getRole());
     }
 
     @Override
@@ -35,7 +33,7 @@ public class AuthInfo implements Authentication {
 
     @Override
     public Object getPrincipal() {
-        return userEmail;
+        return user;
     }
 
     @Override
@@ -50,6 +48,6 @@ public class AuthInfo implements Authentication {
 
     @Override
     public String getName() {
-        return userEmail;
+        return user.getEmail();
     }
 }

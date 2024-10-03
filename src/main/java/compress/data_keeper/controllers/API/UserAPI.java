@@ -1,7 +1,5 @@
 package compress.data_keeper.controllers.API;
 
-import compress.data_keeper.domain.dto.files.FileCreationDto;
-import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,11 +11,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-@Tag(name="User Controller", description = "Controller for CRUD operation with user")
+@Tag(name = "User Controller", description = "Controller for CRUD operation with user")
 @RequestMapping("/v1/user")
 public interface UserAPI {
 

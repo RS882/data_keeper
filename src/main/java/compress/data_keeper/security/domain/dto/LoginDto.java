@@ -19,7 +19,7 @@ public class LoginDto {
             flags = Pattern.Flag.CASE_INSENSITIVE
     )
     @NotNull(message = "Email cannot be null")
-    @Schema(description = "User Email", example = "example@mail.com")
+    @Schema(description = "User Email", example = "example@gmail.com")
     private String email;
 
     @Pattern(
@@ -29,7 +29,7 @@ public class LoginDto {
                     " have no spaces,no less than 8 characters and no more than 20"
     )
     @NotNull(message = "Password cannot be empty")
-    @Schema(description = "User password", example = "Qwerty!123")
+    @Schema(description = "User password", example = "136Jkn!kPu5%")
     private String password;
 
     @Override

@@ -15,18 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class FileController implements FileAPI {
 
     private final FileService fileService;
+
     private final UserService userService;
 
     @Override
-    public ResponseEntity<FileResponseDto> uploadFile(FileCreationDto fileCreationDto) {
-
-
-        Long userId = fileCreationDto.getUserId();
-
-        userService.checkUserById(userId);
-
-        User user = userService.getUserById(userId);
-
-        return ResponseEntity.ok(fileService.uploadFile(fileCreationDto, user));
+    public ResponseEntity<FileResponseDto> uploadFile(FileCreationDto fileCreationDto, User currentUser) {
+        return ResponseEntity.ok(fileService.uploadFile(fileCreationDto, currentUser));
     }
 }

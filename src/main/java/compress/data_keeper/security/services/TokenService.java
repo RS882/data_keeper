@@ -1,28 +1,24 @@
 package compress.data_keeper.security.services;
 
 import compress.data_keeper.domain.User;
+import compress.data_keeper.exception_handler.not_found.exceptions.TokenNotFoundException;
+import compress.data_keeper.security.domain.dto.TokensDto;
+import compress.data_keeper.security.domain.entity.RefreshToken;
+import compress.data_keeper.security.repositorys.TokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import compress.data_keeper.security.contstants.Role;
-import compress.data_keeper.security.domain.AuthInfo;
-import compress.data_keeper.security.domain.dto.TokensDto;
-import compress.data_keeper.security.domain.entity.RefreshToken;
-
-import compress.data_keeper.exception_handler.not_found.exceptions.TokenNotFoundException;
-import compress.data_keeper.security.repositorys.TokenRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -87,19 +83,9 @@ public class TokenService {
         return getClaims(accessToken, ACCESS_KEY);
     }
 
+    @Transactional
     public void removeOldRefreshToken(String oldRefreshToken) {
         repository.deleteAllByToken(oldRefreshToken);
-    }
-
-    public AuthInfo mapClaims(Claims claims) {
-        String userEmail = claims.getSubject();
-        List<String> roleList = (List<String>) claims.get(USER_ROLE_VARIABLE_NAME);
-        Set<Role> roles = new HashSet<>();
-
-        for (String role : roleList) {
-            roles.add(Role.valueOf(role));
-        }
-        return new AuthInfo(userEmail, roles);
     }
 
     private String generateAccessToken(User user) {
@@ -109,7 +95,7 @@ public class TokenService {
                 .issuer(TOKENS_ISSUER)
                 .issuedAt(Date.from(Instant.now()))
                 .signWith(ACCESS_KEY)
-                .claim(USER_ROLE_VARIABLE_NAME, user.getAuthorities())
+                .claim(USER_ROLE_VARIABLE_NAME, user.getRole())
                 .claim(USER_EMAIL_VARIABLE_NAME, user.getEmail())
                 .compact();
     }
@@ -131,9 +117,9 @@ public class TokenService {
                 .user(user)
                 .expireAt(
                         Instant.ofEpochMilli(this.refreshTokenExpireAt.getTime())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime()
-                        )
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDateTime()
+                )
                 .build();
         repository.save(refreshTokenEntity);
     }

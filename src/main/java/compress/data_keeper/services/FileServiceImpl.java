@@ -5,11 +5,11 @@ import compress.data_keeper.domain.Folder;
 import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
-import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FileInfoService;
 import compress.data_keeper.services.interfaces.FileService;
 import compress.data_keeper.services.interfaces.FolderService;
+import compress.data_keeper.services.mapping.FolderDtoMapperService;
 import io.minio.ObjectWriteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +30,8 @@ public class FileServiceImpl implements FileService {
 
     private final FileInfoService fileInfoService;
 
+    private final FolderDtoMapperService folderDtoMapperService;
+
     @Value("${url-lifetime}")
     private int urlLifeTime;
 
@@ -41,7 +43,7 @@ public class FileServiceImpl implements FileService {
 
         checkFile(file);
 
-        Folder folderForFile = folderService.getFolder(FolderDto.from(fileCreationDto), user);
+        Folder folderForFile = folderService.getFolder(folderDtoMapperService.toDto(fileCreationDto), user);
 
         FileInfo fileInfo = fileInfoService.createFileInfo(file, folderForFile, fileCreationDto.getFileDescription());
 
@@ -56,6 +58,4 @@ public class FileServiceImpl implements FileService {
                 .linkIsValidForMs(linkLifeTimeDuration)
                 .build();
     }
-
-
 }

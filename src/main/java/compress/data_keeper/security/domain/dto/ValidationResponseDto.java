@@ -10,7 +10,7 @@ import java.util.List;
 @Builder
 @Schema(name = "Information after validation", description = "Information after validation successful validation")
 public class ValidationResponseDto {
-    @Schema(description = "User id", example = "668c1143a70d9e5b0d94f488")
+    @Schema(description = "User id", example = "234")
     private Long userId;
     @Schema(description = "Is user authorized", example = "true")
     Boolean isAuthorized;

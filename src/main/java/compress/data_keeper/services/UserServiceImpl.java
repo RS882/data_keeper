@@ -4,8 +4,7 @@ import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.users.UserDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import compress.data_keeper.exception_handler.bad_requeat.BadRequestException;
-import compress.data_keeper.exception_handler.bad_requeat.exceptions.UserIdIsNullException;
-import compress.data_keeper.exception_handler.not_found.exceptions.UserNotFoundByIdException;
+import compress.data_keeper.exception_handler.not_found.exceptions.UserNotFoundByEmailException;
 import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.services.interfaces.UserService;
 import compress.data_keeper.services.mapping.UserMapperService;
@@ -23,26 +22,22 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto createUser(UserRegistrationDto userRegistrationDto) {
 
-        if(userRepository.existsByEmail(userRegistrationDto.getEmail()))
+        if (userRepository.existsByEmail(userRegistrationDto.getEmail()))
             throw new BadRequestException("Email address already in use");
 
-        User savedUser = userRepository.save(mapper.toEntity(userRegistrationDto));
+        User savedUser = saveUser(mapper.toEntity(userRegistrationDto));
 
         return mapper.toDto(savedUser);
     }
 
     @Override
-    public void checkUserById(Long id) {
-        if (id == null) {
-            throw new UserIdIsNullException();
-        }
-        if (!userRepository.existsById(id)) {
-            throw new UserNotFoundByIdException(id);
-        }
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmailAndIsActiveTrue(email)
+                .orElseThrow(() -> new UserNotFoundByEmailException(email));
     }
 
     @Override
-    public User getUserById(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> new UserNotFoundByIdException(id));
+    public User saveUser(User user) {
+        return userRepository.save(user);
     }
 }

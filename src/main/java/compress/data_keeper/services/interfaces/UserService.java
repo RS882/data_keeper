@@ -6,6 +6,8 @@ import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 
 public interface UserService {
     UserDto createUser(UserRegistrationDto userRegistrationDto);
-    void checkUserById(Long id);
-    User getUserById(Long id);
+
+    User getUserByEmail(String email);
+
+    User saveUser(User user);
 }

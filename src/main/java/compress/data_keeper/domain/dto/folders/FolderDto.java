@@ -1,7 +1,5 @@
 package compress.data_keeper.domain.dto.folders;
 
-import compress.data_keeper.domain.Folder;
-import compress.data_keeper.domain.dto.files.FileCreationDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -24,12 +22,4 @@ public class FolderDto {
 
     @Schema(description = "Path of folder", example = "http://bucket/isiisi/23")
     private String path;
-
-    public static FolderDto from(FileCreationDto fileCreationDto) {
-        return FolderDto.builder()
-                .name(fileCreationDto.getFolderName())
-                .description(fileCreationDto.getFolderDescription())
-                .path(fileCreationDto.getFolderPath())
-                .build();
-    }
 }
