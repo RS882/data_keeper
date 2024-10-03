@@ -3,6 +3,7 @@ package compress.data_keeper.controllers.API;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserDto;
+import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,13 +25,13 @@ public interface UserAPI {
             description = "This method create new user from userDto.",
             requestBody = @RequestBody(
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UserDto.class)))
+                            schema = @Schema(implementation = UserRegistrationDto.class)))
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User created successfully",
+            @ApiResponse(responseCode = "201", description = "User created successfully",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = UserDto.class))),
     })
-    @PostMapping
-    ResponseEntity<UserDto> createUser(@org.springframework.web.bind.annotation.RequestBody @Valid UserDto userDto);
+    @PostMapping("/registration")
+    ResponseEntity<UserDto> createUser(@org.springframework.web.bind.annotation.RequestBody @Valid UserRegistrationDto userRegistrationDto);
 }

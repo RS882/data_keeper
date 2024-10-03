@@ -1,6 +1,6 @@
 package compress.data_keeper.exception_handler.dto;
 
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,9 +12,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-//@Schema(name = "Validation Errors", description = "Validation error information")
+@Schema(name = "Validation Errors", description = "Validation error information")
 public class ValidationErrorsDto {
 
-//    @Schema(description = "list of validation errors")
+    @Schema(description = "list of validation errors")
     private List<ValidationErrorDto> errors;
 }

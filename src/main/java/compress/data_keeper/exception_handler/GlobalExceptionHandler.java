@@ -1,5 +1,6 @@
 package compress.data_keeper.exception_handler;
 
+import compress.data_keeper.exception_handler.forbidden.ForbiddenException;
 import lombok.extern.slf4j.Slf4j;
 import compress.data_keeper.domain.dto.ResponseMessageDto;
 import compress.data_keeper.exception_handler.dto.ValidationErrorDto;
@@ -10,9 +11,11 @@ import compress.data_keeper.exception_handler.bad_requeat.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -24,9 +27,24 @@ import java.util.List;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ServerIOException.class)
-    public ResponseEntity<ResponseMessageDto> handleException(ServerIOException e) {
-        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ResponseMessageDto> handleNotFoundException(AuthenticationException e) {
+        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ResponseMessageDto> handleNotFoundException(ForbiddenException e) {
+        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(HttpMessageNotReadableException e) {
+        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MissingRequestCookieException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(MissingRequestCookieException e) {
+        return new ResponseEntity<>(new ResponseMessageDto("Cookie is incorrect"), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(BadRequestException.class)
@@ -39,9 +57,15 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ResponseMessageDto> handleException(HttpMessageNotReadableException e) {
-        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.BAD_REQUEST);
+    @ExceptionHandler(ServerIOException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(ServerIOException e) {
+        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(RuntimeException e) {
+        log.error("RuntimeException occurred", e);
+        return new ResponseEntity<>(new ResponseMessageDto("Something went wrong"), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -66,5 +90,4 @@ public class GlobalExceptionHandler {
                         .errors(validationErrors)
                         .build());
     }
-
 }
