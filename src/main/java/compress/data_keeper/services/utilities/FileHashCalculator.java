@@ -13,7 +13,6 @@ public class FileHashCalculator {
         return calculateHash(inputStream, "SHA-256");
     }
 
-
     public static String calculateHash(InputStream inputStream, String algorithm) {
         try {
 

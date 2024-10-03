@@ -3,14 +3,13 @@ package compress.data_keeper.services;
 import compress.data_keeper.domain.Folder;
 import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.folders.FolderDto;
+import compress.data_keeper.exception_handler.not_found.exceptions.FolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FolderRepository;
 import compress.data_keeper.services.interfaces.FolderService;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
-
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -36,33 +35,56 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     @Transactional
-    public String createFolder(FolderDto dto, User user) {
+    public Folder getFolder(FolderDto dto, User user) {
 
-        Folder folder;
         if (dto == null) {
-            folder = Folder.builder()
-                    .name(LocalDateTime.now().toString())
-                    .owner(user)
-                    .build();
-
-        } else if (dto.getPath() != null && !dto.getPath().isBlank()) {
-            return dto.getPath();
-
+            return createFolder(user);
         } else {
-            folder = Folder.builder()
-                    .name(dto.getName())
-                    .description(dto.getDescription())
-                    .owner(user)
-                    .build();
+            String folderPath = dto.getPath();
+            if (folderPath != null && !folderPath.isBlank()) {
+                return getFolderByPath(folderPath);
+            } else {
+                return createFolder(dto, user);
+            }
         }
+    }
+
+    private Folder getFolderByPath(String path) {
+        return folderRepository.findByPath(path)
+                .orElseThrow(() -> new FolderNotFoundException(path));
+    }
+
+    private Folder createFolder(User user) {
+        Folder folder = Folder.builder()
+                .name(LocalDateTime.now().toString())
+                .owner(user)
+                .build();
+
+        return createFolder(folder);
+    }
+
+    private Folder createFolder(FolderDto dto, User user) {
+        String dtoFolderName = dto.getName();
+        String folderName = dtoFolderName == null || dtoFolderName.isBlank() ?
+                LocalDateTime.now().toString() : dtoFolderName;
+
+        Folder folder = Folder.builder()
+                .name(folderName)
+                .description(dto.getDescription())
+                .owner(user)
+                .build();
+
+        return createFolder(folder);
+    }
+
+    private Folder createFolder(Folder folder) {
 
         Folder savedFolder = folderRepository.save(folder);
-
         String folderPath = createFolderPath(savedFolder.getId().toString(), savedFolder.getOwner().getId());
 
         savedFolder.setPath(folderPath);
 
-        return folderPath;
+        return savedFolder;
     }
 
     private String createFolderPath(String folderUUID, Long userId) {
