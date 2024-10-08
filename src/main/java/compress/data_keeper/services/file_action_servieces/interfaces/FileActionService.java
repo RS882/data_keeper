@@ -18,6 +18,30 @@ public interface FileActionService {
 
     Map<String, InputStream> getFileImages(MultipartFile file);
 
+    default
+    BufferedImage convertTextToImage(String text, int linesPerPage) {
+        int width = 800;
+        int height = 1000;
+
+        String[] lines = text.split("\n");
+
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = image.createGraphics();
+        g.setFont(new Font("Arial", Font.PLAIN, 18));
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, width, height);
+        g.setColor(Color.BLACK);
+
+        int y = 50;
+        for (int i = 0; i < linesPerPage && i < lines.length; i++) {
+            g.drawString(lines[i], 20, y);
+            y += g.getFontMetrics().getHeight();
+        }
+        g.dispose();
+
+        return image;
+    }
+
     default InputStream compressImg(BufferedImage image, int[] size) {
 
         ByteArrayOutputStream outputStream;

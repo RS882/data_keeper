@@ -135,6 +135,7 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public String getTempFullPath(String path) {
+        if(path==null) return null;
 
         Map<String, String> queryParams = getQueryParamsForFile(path);
 

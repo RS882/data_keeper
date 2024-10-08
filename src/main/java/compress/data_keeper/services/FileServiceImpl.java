@@ -6,6 +6,7 @@ import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FileInfoService;
@@ -13,19 +14,24 @@ import compress.data_keeper.services.interfaces.FileService;
 import compress.data_keeper.services.interfaces.FolderService;
 import compress.data_keeper.services.mapping.FolderDtoMapperService;
 import lombok.RequiredArgsConstructor;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
+import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 import static compress.data_keeper.domain.dto.files.FileResponseDto.ORIGINAL_FILE_KEY;
+import static compress.data_keeper.services.utilities.FileActionUtilities.getFileActionServiceByContentType;
 import static compress.data_keeper.services.utilities.FileUtilities.checkFile;
 
 @Service
@@ -40,7 +46,6 @@ public class FileServiceImpl implements FileService {
 
     private final FolderDtoMapperService folderDtoMapperService;
 
-    private final FileActionService fileActionService;
 
     @Value("${url-lifetime}")
     private int urlLifeTime;
@@ -55,15 +60,15 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public FileResponseDto uploadFileTemporary(FileCreationDto fileCreationDto, User user) {
 
-        MultipartFile file = fileCreationDto.getFile();
+        final MultipartFile file = fileCreationDto.getFile();
 
         checkFile(file);
 
-        Folder folderForFile = folderService.getFolder(folderDtoMapperService.toDto(fileCreationDto), user, tempFolder);
+        final Folder folderForFile = folderService.getFolder(folderDtoMapperService.toDto(fileCreationDto), user, tempFolder);
 
-        FileInfo fileInfo = fileInfoService.createFileInfo(file, folderForFile, fileCreationDto.getFileDescription());
+        final FileInfo fileInfo = fileInfoService.createFileInfo(file, folderForFile, fileCreationDto.getFileDescription());
 
-        String originalFilePath = dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
+        final String originalFilePath = dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
 
         Map<String, String> paths = new HashMap<>();
         Map<String, String> links = new HashMap<>();
@@ -94,22 +99,35 @@ public class FileServiceImpl implements FileService {
             String folderPath,
             String fileUUID) {
 
+        final String imgFileName = fileUUID + "." + IMAGE_FORMAT;
+
+        final FileActionService fileActionService = getFileActionService(file);
+
         Map<String, String> paths = new HashMap<>();
 
-        String imgFileName = fileUUID + "." + IMAGE_FORMAT;
+        if (fileActionService != null) {
+            Map<String, InputStream> iii =  fileActionService.getFileImages(file);
+            fileActionService.getFileImages(file).forEach((key, value) -> {
+                Path filePath = Path.of(folderPath, key, imgFileName);
 
-        fileActionService.getFileImages(file).forEach((key, value) -> {
-            Path filePath = Path.of(folderPath, key, imgFileName);
+                InputStreamDto dto = new InputStreamDto(
+                        value,
+                        key + "." + IMAGE_FORMAT,
+                        MediaType.IMAGE_JPEG_VALUE);
 
-            InputStreamDto dto = new InputStreamDto(
-                    value,
-                    key + "." + IMAGE_FORMAT,
-                    MediaType.IMAGE_JPEG_VALUE);
+                String imgFilePath = dataStorageService.uploadFIle(dto, filePath.toString()).object();
 
-            String imgFilePath = dataStorageService.uploadFIle(dto, filePath.toString()).object();
+                paths.put(key, imgFilePath);
+            });
+        }else{
+            paths.putAll(getNullImagesPaths());
+        }
+        return paths;
+    }
 
-            paths.put(key, imgFilePath);
-        });
+    private Map<String, String> getNullImagesPaths(){
+        Map<String, String> paths = new HashMap<>();
+        IMAGE_SIZES.forEach(size-> paths.put(size[0]+"x"+size[1], null));
         return paths;
     }
 
@@ -121,5 +139,17 @@ public class FileServiceImpl implements FileService {
                 links.put(key, dataStorageService.getTempFullPath(value))
         );
         return links;
+    }
+
+    private FileActionService getFileActionService(MultipartFile file) {
+
+        Tika tika = new Tika();
+        try {
+            String contentType = tika.detect(file.getInputStream());
+
+            return getFileActionServiceByContentType(contentType);
+        } catch (IOException e) {
+            throw new ServerIOException(e.getMessage());
+        }
     }
 }
