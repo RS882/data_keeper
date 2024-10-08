@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-@Tag(name="File Controller", description = "Controller for CRUD operation with file")
+@Tag(name = "File Controller", description = "Controller for CRUD operation with file")
 @RequestMapping("/v1/file")
 public interface FileAPI {
     @Operation(summary = "Upload file to bucket",
@@ -33,7 +33,7 @@ public interface FileAPI {
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = FileResponseDto.class))),
     })
-    @PostMapping
+    @PostMapping("/temp")
     ResponseEntity<FileResponseDto> saveFileTemporarily(
             @ModelAttribute
             @Valid

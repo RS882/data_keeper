@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/validation").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/logout").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/v1/file").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/v1/file/temp").authenticated()
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(validationFilter, UsernamePasswordAuthenticationFilter.class)
