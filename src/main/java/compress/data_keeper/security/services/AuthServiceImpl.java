@@ -36,7 +36,9 @@ public class AuthServiceImpl implements AuthService {
     public static final int MAX_COUNT_OF_LOGINS = 5;
 
     @Override
-    public TokensDto login(LoginDto loginDto, User currentUser) {
+    public TokensDto login(LoginDto loginDto) {
+        User currentUser = userService.getUserByEmail(loginDto.getEmail());
+
         checkLoginBlockedTime(currentUser);
         if (!encoder.matches(loginDto.getPassword(), currentUser.getPassword())) {
             throw new BadCredentialsException("Wrong password");
@@ -99,8 +101,8 @@ public class AuthServiceImpl implements AuthService {
             user.setLoginBlockedUntil(LocalDateTime.now().plusMinutes(5));
             userService.saveUser(user);
 
-            log.warn("User {} has limit of logins :{}.", userId,MAX_COUNT_OF_LOGINS);
-            log.warn("User {} logins blocked until:{}.", userId,user.getLoginBlockedUntil());
+            log.warn("User {} has limit of logins :{}.", userId, MAX_COUNT_OF_LOGINS);
+            log.warn("User {} logins blocked until:{}.", userId, user.getLoginBlockedUntil());
         }
     }
 

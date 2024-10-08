@@ -6,5 +6,5 @@ import compress.data_keeper.domain.dto.files.FileResponseDto;
 
 public interface FileService {
 
-    FileResponseDto uploadFile(FileCreationDto fileCreationDto, User user);
+    FileResponseDto uploadFileTemporary(FileCreationDto fileCreationDto, User user);
 }

@@ -1,6 +1,5 @@
 package compress.data_keeper.security.controllers.API;
 
-import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.ResponseMessageDto;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
@@ -18,8 +17,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import static compress.data_keeper.security.services.AuthServiceImpl.MAX_COUNT_OF_LOGINS;
@@ -41,26 +40,26 @@ public interface AuthAPI {
             @ApiResponse(
                     responseCode = "200",
                     description = "Successful login",
-                    content = {@Content(mediaType = "application/json",
+                    content = {@Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = TokenResponseDto.class))}
             ),
             @ApiResponse(responseCode = "400",
                     description = "Invalid input",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
             @ApiResponse(responseCode = "401",
                     description = "Incorrect password or email",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
 
                     )),
             @ApiResponse(responseCode = "403",
                     description = "Count of user's logins is more than maximum(" + MAX_COUNT_OF_LOGINS + ")",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     ))}
     )
@@ -70,9 +69,6 @@ public interface AuthAPI {
             @Parameter(description = "Login DTO")
             @RequestBody
             LoginDto loginDto,
-            @AuthenticationPrincipal
-            @Parameter(hidden = true)
-            User currentUser,
             HttpServletResponse response);
 
 
@@ -86,19 +82,19 @@ public interface AuthAPI {
             @ApiResponse(
                     responseCode = "200",
                     description = "Successful refresh",
-                    content = {@Content(mediaType = "application/json",
+                    content = {@Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = TokenResponseDto.class))}
             ),
             @ApiResponse(responseCode = "400",
                     description = "Cookie is incorrect",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
             @ApiResponse(responseCode = "401",
                     description = "Invalid token",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     ))}
     )
@@ -124,13 +120,13 @@ public interface AuthAPI {
             @ApiResponse(
                     responseCode = "200",
                     description = "Successful validation",
-                    content = {@Content(mediaType = "application/json",
+                    content = {@Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ValidationResponseDto.class))}
             ),
             @ApiResponse(responseCode = "401",
                     description = "Invalid token",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     ))})
     @GetMapping("/validation")
@@ -151,7 +147,7 @@ public interface AuthAPI {
             @ApiResponse(responseCode = "401",
                     description = "Invalid token",
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     ))})
     @GetMapping("/logout")

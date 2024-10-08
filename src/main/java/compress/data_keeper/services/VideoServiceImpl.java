@@ -71,7 +71,7 @@ public class VideoServiceImpl implements VideoService, MediaFormats {
         String videoFileName = uuid + "." + VIDEO_FORMAT;
         String previewPictureName = uuid + "." + IMAGE_FORMAT;
 
-        Path tempDir = Paths.get(tempFolder, uuid.toString());
+        Path tempDir = Paths.get("/"+tempFolder, uuid.toString());
         Path tempOutputVideoPath = tempDir.resolve(videoFileName);
 
         Path path = Path.of(dirPrefix, isPublic ? prefixPublic : prefixPrivate + uuid);

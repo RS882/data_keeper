@@ -1,25 +1,25 @@
 package compress.data_keeper.services;
 
+import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import io.minio.*;
 import io.minio.http.Method;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
-import static compress.data_keeper.services.DataStorageServiceImpl.InputStreamDto.getInputStreamDto;
+
+
+import static compress.data_keeper.domain.dto.InputStreamDto.getInputStreamDto;
 import static compress.data_keeper.services.utilities.FileMetaDataConstants.*;
 
 @Service
@@ -75,8 +75,8 @@ public class DataStorageServiceImpl implements DataStorageService {
         return uploadFIle(dto, outputFile);
     }
 
-
-    private ObjectWriteResponse uploadFIle(InputStreamDto inputStreamDto, String outputFile) {
+    @Override
+    public ObjectWriteResponse uploadFIle(InputStreamDto inputStreamDto, String outputFile) {
 
         checkAndCreateBucket();
 
@@ -222,29 +222,6 @@ public class DataStorageServiceImpl implements DataStorageService {
         builder.append("}");
 
         return builder.toString();
-    }
-
-    @Getter
-    @AllArgsConstructor
-    public static class InputStreamDto {
-
-        InputStream inputStream;
-
-        String originalFilename;
-
-        String contentType;
-
-        static InputStreamDto getInputStreamDto(MultipartFile file, String contentType) {
-            try {
-                return getInputStreamDto(file.getInputStream(), file.getOriginalFilename(), contentType);
-            } catch (IOException e) {
-                throw new ServerIOException(e.getMessage());
-            }
-        }
-
-        static InputStreamDto getInputStreamDto(InputStream inputStream, String originalFilename, String contentType) {
-            return new InputStreamDto(inputStream, originalFilename, contentType);
-        }
     }
 }
 

@@ -7,7 +7,7 @@ import compress.data_keeper.security.domain.dto.TokensDto;
 import compress.data_keeper.security.domain.dto.ValidationResponseDto;
 
 public interface AuthService {
-    TokensDto login(LoginDto loginDto, User currentUser);
+    TokensDto login(LoginDto loginDto);
 
     TokensDto refresh(String refreshToken);
 

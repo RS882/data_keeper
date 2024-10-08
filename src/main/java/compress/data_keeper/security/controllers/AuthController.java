@@ -21,10 +21,8 @@ public class AuthController implements AuthAPI {
     private final CookieService cookieService;
 
     @Override
-    public ResponseEntity<TokenResponseDto> login(LoginDto loginDto,
-                                                  User currentUser,
-                                                  HttpServletResponse response) {
-        TokensDto dto = service.login(loginDto, currentUser);
+    public ResponseEntity<TokenResponseDto> login(LoginDto loginDto, HttpServletResponse response) {
+        TokensDto dto = service.login(loginDto);
         cookieService.setRefreshTokenToCookie(response, dto.getRefreshToken());
         return ResponseEntity.ok(service.getTokenResponseDto(dto));
     }

@@ -6,6 +6,7 @@ import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.exception_handler.not_found.exceptions.FolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FolderRepository;
+import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.services.interfaces.FolderService;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
@@ -26,16 +27,17 @@ public class FolderServiceImpl implements FolderService {
     @Value("${bucket.name}")
     private String bucketName;
 
-    @Value("${prefix.dir}")
-    private String dirPrefix;
-
     private final MinioClient minioClient;
 
     private final FolderRepository folderRepository;
 
+    private String  folderPrefix;
+
     @Override
     @Transactional
-    public Folder getFolder(FolderDto dto, User user) {
+    public Folder getFolder(FolderDto dto, User user, String dirPrefix) {
+
+        folderPrefix = dirPrefix;
 
         if (dto == null) {
             return createFolder(user);
@@ -89,7 +91,7 @@ public class FolderServiceImpl implements FolderService {
 
     private String createFolderPath(String folderUUID, Long userId) {
 
-        String path = Path.of(dirPrefix, userId.toString(), folderUUID).toString();
+        String path = Path.of(folderPrefix, userId.toString(), folderUUID).toString();
 
         try {
             ObjectWriteResponse createdFolder = minioClient.putObject(

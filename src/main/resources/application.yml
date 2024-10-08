@@ -23,7 +23,7 @@ server:
     context-path: /api
   port: ${PORT:8080}
 data:
-  temp-folder: ${TEMP_FOLDER:/media/temp}
+  temp-folder: ${TEMP_FOLDER:temp}
 storage:
   url: ${STORAGE_URL}
 bucket:

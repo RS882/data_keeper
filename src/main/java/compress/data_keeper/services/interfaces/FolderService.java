@@ -6,5 +6,5 @@ import compress.data_keeper.domain.dto.folders.FolderDto;
 
 public interface FolderService {
 
-    Folder getFolder(FolderDto dto, User user);
+    Folder getFolder(FolderDto dto, User user, String dirPrefix);
 }
