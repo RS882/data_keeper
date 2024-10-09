@@ -1,12 +1,11 @@
 package compress.data_keeper.services;
 
-import compress.data_keeper.domain.Folder;
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.Folder;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.exception_handler.not_found.exceptions.FolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FolderRepository;
-import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.services.interfaces.FolderService;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
@@ -33,7 +32,7 @@ public class FolderServiceImpl implements FolderService {
 
     private final FolderRepository folderRepository;
 
-    private String  folderPrefix;
+    private String folderPrefix;
 
     @Override
     @Transactional
@@ -82,7 +81,8 @@ public class FolderServiceImpl implements FolderService {
         return createFolder(folder);
     }
 
-    private Folder createFolder(Folder folder) {
+    @Transactional
+    protected Folder createFolder(Folder folder) {
 
         Folder savedFolder = folderRepository.save(folder);
         String folderPath = createFolderPath(savedFolder.getId().toString(), savedFolder.getOwner().getId());

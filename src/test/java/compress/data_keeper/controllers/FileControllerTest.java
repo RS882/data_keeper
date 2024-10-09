@@ -1,8 +1,6 @@
 package compress.data_keeper.controllers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import compress.data_keeper.repository.UserRepository;
@@ -28,6 +26,7 @@ import java.util.stream.Collectors;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.domain.dto.files.FileResponseDto.ORIGINAL_FILE_KEY;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.*;
@@ -150,7 +149,7 @@ class FileControllerTest {
         }
 
         @Test
-        public void create_file_temp_status_200_for_new_txt_file_in_new_dir_once_file_param() throws Exception {
+        public void create_file_temp_status_200_for_new_txt_file_in_new_dir_without_file_param() throws Exception {
 
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
@@ -193,6 +192,7 @@ class FileControllerTest {
                 assertInstanceOf(String.class, pathValue);
             });
         }
+
         @Test
         public void create_file_temp_status_200_for_new_txt_file_in_old_dir() throws Exception {
 
@@ -222,7 +222,7 @@ class FileControllerTest {
             String jsonResponse = result.getResponse().getContentAsString();
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
             String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-            String pathFolder = originalFilePath.substring(0,originalFilePath.lastIndexOf("/")).trim();
+            String pathFolder = originalFilePath.substring(0, originalFilePath.lastIndexOf("/")).trim();
 
             MockMultipartFile mockFile2 = new MockMultipartFile(
                     "file",
@@ -328,6 +328,63 @@ class FileControllerTest {
                 String pathValue = responseDto.getPaths().get(s);
                 assertNull(pathValue);
             });
+        }
+
+        @Test
+        public void create_file_temp_status_400_when_file_is_empty() throws Exception {
+
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    "testfile.txt",
+                    "text/plain",
+                    new byte[0]
+            );
+            String fileDescription = "Test file description";
+            String folderName = "Test folder name";
+            String folderDescription = "Test folder description";
+            String folderPath = "";
+
+            mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                            .file(mockFile)  // предполагается, что mockFile пустой
+                            .param("fileDescription", fileDescription)
+                            .param("folderName", folderName)
+                            .param("folderDescription", folderDescription)
+                            .param("folderPath", folderPath)
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
+        public void create_file_temp_status_404_when_folder_path_is_wrong() throws Exception {
+
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    "testfile.txt",
+                    "text/plain",
+                    "This is the content of the test file".getBytes()
+            );
+
+            String fileDescription = "Test file description";
+            String folderName = "Test folder name";
+            String folderDescription = "Test folder description";
+            String folderPath = UUID.randomUUID().toString();
+
+            mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                            .file(mockFile)
+                            .param("fileDescription", fileDescription)
+                            .param("folderName", folderName)
+                            .param("folderDescription", folderDescription)
+                            .param("folderPath", folderPath)
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
         }
     }
 }

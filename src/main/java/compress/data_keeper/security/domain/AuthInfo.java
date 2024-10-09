@@ -1,6 +1,6 @@
 package compress.data_keeper.security.domain;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 

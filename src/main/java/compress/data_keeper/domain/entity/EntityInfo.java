@@ -1,4 +1,4 @@
-package compress.data_keeper.domain;
+package compress.data_keeper.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

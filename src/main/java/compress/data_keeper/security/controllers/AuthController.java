@@ -1,6 +1,5 @@
 package compress.data_keeper.security.controllers;
 
-import compress.data_keeper.domain.User;
 import compress.data_keeper.security.controllers.API.AuthAPI;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;

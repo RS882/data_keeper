@@ -1,6 +1,6 @@
 package compress.data_keeper.security.services;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.not_found.exceptions.TokenNotFoundException;
 import compress.data_keeper.security.domain.dto.TokensDto;
 import compress.data_keeper.security.domain.entity.RefreshToken;

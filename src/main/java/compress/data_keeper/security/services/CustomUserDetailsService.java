@@ -1,7 +1,7 @@
 package compress.data_keeper.security.services;
 
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.security.domain.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;

@@ -9,14 +9,15 @@ public class FileUtilities {
     public static  String toUnixStylePath(String path) {
         return path.replace("\\", "/");
     }
+
     public static  String toWinStylePath(String path) {
         return path.replace("/", "\\");
     }
 
     public static void checkFile(MultipartFile file) {
         if (file.isEmpty()) throw new BadFileSizeException();
-        if (file.getContentType().isEmpty())
-            throw new BadFileFormatException(file.getOriginalFilename());
+//        if (file.getContentType().isEmpty())
+//            throw new BadFileFormatException(file.getOriginalFilename());
     }
 
     public static String getFileExtension(MultipartFile file) {

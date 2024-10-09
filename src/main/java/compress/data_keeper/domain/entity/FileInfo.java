@@ -1,8 +1,7 @@
-package compress.data_keeper.domain;
+package compress.data_keeper.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;

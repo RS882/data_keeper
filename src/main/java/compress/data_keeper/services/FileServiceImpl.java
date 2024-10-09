@@ -1,11 +1,11 @@
 package compress.data_keeper.services;
 
-import compress.data_keeper.domain.FileInfo;
-import compress.data_keeper.domain.Folder;
-import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.domain.entity.FileInfo;
+import compress.data_keeper.domain.entity.Folder;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
 import compress.data_keeper.services.interfaces.DataStorageService;
@@ -29,6 +29,7 @@ import java.util.Map;
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
+import static compress.data_keeper.domain.CustomMultipartFile.toCustomMultipartFile;
 import static compress.data_keeper.domain.dto.files.FileResponseDto.ORIGINAL_FILE_KEY;
 import static compress.data_keeper.services.utilities.FileActionUtilities.getFileActionServiceByContentType;
 import static compress.data_keeper.services.utilities.FileUtilities.checkFile;
@@ -59,7 +60,7 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public FileResponseDto uploadFileTemporary(FileCreationDto fileCreationDto, User user) {
 
-        final MultipartFile file = fileCreationDto.getFile();
+        MultipartFile file = toCustomMultipartFile(fileCreationDto.getFile());
 
         checkFile(file);
 

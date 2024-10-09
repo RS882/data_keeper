@@ -66,9 +66,9 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public ObjectWriteResponse uploadFIle(MultipartFile file, String outputFile) {
-
-        String contentType = file.getContentType() != null ?
-                file.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        String fileContentType = file.getContentType();
+        String contentType = fileContentType == null || fileContentType.isEmpty() ?
+                MediaType.APPLICATION_OCTET_STREAM_VALUE : fileContentType;
 
         InputStreamDto dto = getInputStreamDto(file, contentType);
 
@@ -135,7 +135,8 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public String getTempFullPath(String path) {
-        if(path==null) return null;
+
+        if (path == null) return null;
 
         Map<String, String> queryParams = getQueryParamsForFile(path);
 

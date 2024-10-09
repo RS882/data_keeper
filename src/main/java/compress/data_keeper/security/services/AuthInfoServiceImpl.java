@@ -1,6 +1,6 @@
 package compress.data_keeper.security.services;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.security.domain.AuthInfo;
 import compress.data_keeper.security.services.interfaces.AuthInfoService;
 import compress.data_keeper.services.interfaces.UserService;

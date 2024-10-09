@@ -1,7 +1,7 @@
 package compress.data_keeper.services;
 
-import compress.data_keeper.domain.FileInfo;
-import compress.data_keeper.domain.Folder;
+import compress.data_keeper.domain.entity.FileInfo;
+import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FileInfoRepository;
 import compress.data_keeper.services.interfaces.FileInfoService;

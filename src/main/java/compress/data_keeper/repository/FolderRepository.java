@@ -1,6 +1,6 @@
 package compress.data_keeper.repository;
 
-import compress.data_keeper.domain.Folder;
+import compress.data_keeper.domain.entity.Folder;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

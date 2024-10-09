@@ -1,6 +1,6 @@
 package compress.data_keeper.services;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.domain.dto.users.UserDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import compress.data_keeper.exception_handler.unauthorized.UnauthorizedException;

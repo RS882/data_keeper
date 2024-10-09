@@ -1,4 +1,4 @@
-package compress.data_keeper.domain;
+package compress.data_keeper.domain.entity;
 
 import compress.data_keeper.security.contstants.Role;
 import compress.data_keeper.security.domain.entity.RefreshToken;

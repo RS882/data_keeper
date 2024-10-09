@@ -1,6 +1,6 @@
 package compress.data_keeper.security.services;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.authentication_exception.WrongTokenException;
 import compress.data_keeper.exception_handler.forbidden.exceptions.LimitOfLoginsException;
 import compress.data_keeper.security.domain.dto.LoginDto;

@@ -1,6 +1,5 @@
 package compress.data_keeper.security.services.interfaces;
 
-import compress.data_keeper.domain.User;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
 import compress.data_keeper.security.domain.dto.TokensDto;

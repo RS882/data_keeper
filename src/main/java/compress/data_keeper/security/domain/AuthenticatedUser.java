@@ -1,6 +1,6 @@
 package compress.data_keeper.security.domain;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;

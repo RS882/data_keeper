@@ -1,6 +1,6 @@
 package compress.data_keeper.security.domain.entity;
 
-import compress.data_keeper.domain.User;
+import compress.data_keeper.domain.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
