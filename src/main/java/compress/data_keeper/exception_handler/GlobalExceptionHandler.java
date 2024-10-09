@@ -1,6 +1,7 @@
 package compress.data_keeper.exception_handler;
 
 import compress.data_keeper.exception_handler.forbidden.ForbiddenException;
+import compress.data_keeper.exception_handler.unauthorized.UnauthorizedException;
 import lombok.extern.slf4j.Slf4j;
 import compress.data_keeper.domain.dto.ResponseMessageDto;
 import compress.data_keeper.exception_handler.dto.ValidationErrorDto;
@@ -55,6 +56,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ResponseMessageDto> handleException(NotFoundException e) {
         return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(UnauthorizedException e) {
+        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(ServerIOException.class)

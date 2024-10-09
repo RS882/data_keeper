@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 import static compress.data_keeper.security.services.TokenService.USER_ROLE_VARIABLE_NAME;
@@ -74,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
 
         return ValidationResponseDto.builder()
                 .isAuthorized(true)
-                .roles((List) claims.get(USER_ROLE_VARIABLE_NAME))
+                .roles(Collections.singletonList((String) claims.get(USER_ROLE_VARIABLE_NAME)))
                 .userId(user.getId())
                 .build();
     }

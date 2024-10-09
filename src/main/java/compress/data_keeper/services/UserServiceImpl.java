@@ -3,8 +3,8 @@ package compress.data_keeper.services;
 import compress.data_keeper.domain.User;
 import compress.data_keeper.domain.dto.users.UserDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
+import compress.data_keeper.exception_handler.unauthorized.UnauthorizedException;
 import compress.data_keeper.exception_handler.bad_requeat.BadRequestException;
-import compress.data_keeper.exception_handler.not_found.exceptions.UserNotFoundByEmailException;
 import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.services.interfaces.UserService;
 import compress.data_keeper.services.mapping.UserMapperService;
@@ -33,7 +33,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserByEmail(String email) {
         return userRepository.findByEmailAndIsActiveTrue(email)
-                .orElseThrow(() -> new UserNotFoundByEmailException(email));
+                .orElseThrow(UnauthorizedException::new);
     }
 
     @Override

@@ -71,6 +71,7 @@ class UserControllerTest {
                     .userName(TEST_USER_NAME_1)
                     .password(TEST_USER_PASSWORD_1)
                     .build());
+
             mockMvc.perform(post(USER_REGISTRATION_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(dtoJson))
@@ -81,6 +82,7 @@ class UserControllerTest {
                     .userName(TEST_USER_NAME_2)
                     .password(TEST_USER_PASSWORD_2)
                     .build());
+
             mockMvc.perform(post(USER_REGISTRATION_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(dtoJson2))
@@ -92,6 +94,7 @@ class UserControllerTest {
         @MethodSource("incorrectRegistrationData")
         public void createUser_with_status_400_registration_data_is_incorrect(UserRegistrationDto dto) throws Exception {
             String dtoJson2 = mapper.writeValueAsString(dto);
+
             mockMvc.perform(post(USER_REGISTRATION_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(dtoJson2))

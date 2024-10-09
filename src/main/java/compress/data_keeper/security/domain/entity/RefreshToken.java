@@ -19,7 +19,7 @@ public class RefreshToken {
     @Setter(AccessLevel.NONE)
     private Long id;
 
-    @Column(name = "token")
+    @Column(name = "token", length = 512)
     private String token;
 
     @Column(name = "expireAt")
