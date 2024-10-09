@@ -9,6 +9,9 @@ public class FileUtilities {
     public static  String toUnixStylePath(String path) {
         return path.replace("\\", "/");
     }
+    public static  String toWinStylePath(String path) {
+        return path.replace("/", "\\");
+    }
 
     public static void checkFile(MultipartFile file) {
         if (file.isEmpty()) throw new BadFileSizeException();

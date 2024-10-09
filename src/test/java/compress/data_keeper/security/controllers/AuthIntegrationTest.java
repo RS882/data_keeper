@@ -66,9 +66,8 @@ class AuthIntegrationTest {
     private final String VALIDATION_URL = "/v1/auth/validation";
     private final String LOGOUT_URL = "/v1/auth/logout";
 
-    @BeforeAll
+    @BeforeEach
     public void setUp() {
-
         UserRegistrationDto dto = UserRegistrationDto
                 .builder()
                 .email(USER1_EMAIL)

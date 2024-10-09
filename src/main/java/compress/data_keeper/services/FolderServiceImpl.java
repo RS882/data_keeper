@@ -20,6 +20,8 @@ import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 
+import static compress.data_keeper.services.utilities.FileUtilities.toWinStylePath;
+
 @Service
 @RequiredArgsConstructor
 public class FolderServiceImpl implements FolderService {
@@ -52,7 +54,8 @@ public class FolderServiceImpl implements FolderService {
     }
 
     private Folder getFolderByPath(String path) {
-        return folderRepository.findByPath(path)
+
+        return folderRepository.findByPath(toWinStylePath(path))
                 .orElseThrow(() -> new FolderNotFoundException(path));
     }
 

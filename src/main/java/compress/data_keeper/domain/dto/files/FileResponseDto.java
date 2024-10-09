@@ -1,5 +1,7 @@
 package compress.data_keeper.domain.dto.files;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -33,4 +35,14 @@ public class FileResponseDto {
                     }
                     """)
     private Map<String, String> paths;
+
+    @JsonCreator
+    public FileResponseDto(
+            @JsonProperty("linksToFiles") Map<String, String> linksToFiles,
+            @JsonProperty("linksIsValidForMs") long linksIsValidForMs,
+            @JsonProperty("paths") Map<String, String> paths) {
+        this.linksToFiles = linksToFiles;
+        this.linksIsValidForMs = linksIsValidForMs;
+        this.paths = paths;
+    }
 }

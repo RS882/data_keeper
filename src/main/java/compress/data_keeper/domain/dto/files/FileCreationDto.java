@@ -4,10 +4,12 @@ import compress.data_keeper.domain.dto.UserParameters;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 @Data
+@Builder
 @Schema(description = "DTO with file for save in the bucket")
 public class FileCreationDto {
 

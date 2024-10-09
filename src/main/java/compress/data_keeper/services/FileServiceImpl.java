@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -106,7 +105,7 @@ public class FileServiceImpl implements FileService {
         Map<String, String> paths = new HashMap<>();
 
         if (fileActionService != null) {
-            Map<String, InputStream> iii =  fileActionService.getFileImages(file);
+
             fileActionService.getFileImages(file).forEach((key, value) -> {
                 Path filePath = Path.of(folderPath, key, imgFileName);
 
@@ -119,15 +118,15 @@ public class FileServiceImpl implements FileService {
 
                 paths.put(key, imgFilePath);
             });
-        }else{
+        } else {
             paths.putAll(getNullImagesPaths());
         }
         return paths;
     }
 
-    private Map<String, String> getNullImagesPaths(){
+    private Map<String, String> getNullImagesPaths() {
         Map<String, String> paths = new HashMap<>();
-        IMAGE_SIZES.forEach(size-> paths.put(size[0]+"x"+size[1], null));
+        IMAGE_SIZES.forEach(size -> paths.put(size[0] + "x" + size[1], null));
         return paths;
     }
 
