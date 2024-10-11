@@ -7,6 +7,7 @@ import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
 import compress.data_keeper.services.mapping.UserMapperService;
+import compress.data_keeper.services.utilities.FileUtilities;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.domain.dto.files.FileResponseDto.ORIGINAL_FILE_KEY;
+import static compress.data_keeper.services.utilities.FileUtilities.getNameFromSizes;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.isA;
@@ -136,7 +138,7 @@ class FileControllerTest {
             assertNotNull(originalFilePath);
             assertInstanceOf(String.class, originalFilePath);
 
-            Set<String> sizes = IMAGE_SIZES.stream().map(s -> s[0] + "x" + s[1]).collect(Collectors.toSet());
+            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
 
             sizes.forEach(s -> {
                 String linkValue = responseDto.getLinksToFiles().get(s);
@@ -181,7 +183,7 @@ class FileControllerTest {
             assertNotNull(originalFilePath);
             assertInstanceOf(String.class, originalFilePath);
 
-            Set<String> sizes = IMAGE_SIZES.stream().map(s -> s[0] + "x" + s[1]).collect(Collectors.toSet());
+            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
 
             sizes.forEach(s -> {
                 String linkValue = responseDto.getLinksToFiles().get(s);
@@ -263,7 +265,7 @@ class FileControllerTest {
             assertNotNull(originalFilePath2);
             assertInstanceOf(String.class, originalFilePath2);
 
-            Set<String> sizes = IMAGE_SIZES.stream().map(s -> s[0] + "x" + s[1]).collect(Collectors.toSet());
+            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
 
             sizes.forEach(s -> {
                 String linkValue = responseDto2.getLinksToFiles().get(s);
@@ -320,7 +322,7 @@ class FileControllerTest {
             assertNotNull(originalFilePath);
             assertInstanceOf(String.class, originalFilePath);
 
-            Set<String> sizes = IMAGE_SIZES.stream().map(s -> s[0] + "x" + s[1]).collect(Collectors.toSet());
+            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
 
             sizes.forEach(s -> {
                 String linkValue = responseDto.getLinksToFiles().get(s);

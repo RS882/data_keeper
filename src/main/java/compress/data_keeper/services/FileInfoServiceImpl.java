@@ -1,19 +1,18 @@
 package compress.data_keeper.services;
 
+import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.entity.FileInfo;
-import compress.data_keeper.domain.entity.Folder;
-import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FileInfoRepository;
 import compress.data_keeper.services.interfaces.FileInfoService;
+import compress.data_keeper.services.mapping.FileInfoMapperService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 
-import static compress.data_keeper.services.utilities.FileHashCalculator.calculateHash;
 import static compress.data_keeper.services.utilities.FileUtilities.getFileExtension;
 
 @Service
@@ -22,30 +21,30 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     private final FileInfoRepository fileInfoRepository;
 
+    private final FileInfoMapperService fileInfoMapperService;
+
     @Override
     @Transactional
-    public FileInfo createFileInfo(MultipartFile file, Folder folder, String fileDescription) {
+    public FileInfo createFileInfo(FileInfoDto dto) {
+        List<FileInfo> fileInfos = createFileInfo(Collections.singletonList(dto));
+        return fileInfos.get(0);
+    }
 
-        try {
-            FileInfo fileInfo = FileInfo.builder()
-                    .name(file.getOriginalFilename())
-                    .description(fileDescription)
-                    .size(file.getSize())
-                    .type(file.getContentType())
-                    .folder(folder)
-                    .hash(calculateHash(file.getInputStream()))
-                    .build();
+    @Override
+    @Transactional
+    public List<FileInfo> createFileInfo(List<FileInfoDto> dtos) {
+        List<FileInfo> fileInfos = dtos.stream()
+                .map(fileInfoMapperService::toFileInfo)
+                .toList();
 
-            FileInfo createdFileInfo = fileInfoRepository.save(fileInfo);
+        List<FileInfo> createdFileInfos = fileInfoRepository.saveAll(fileInfos);
 
-            Path outputFilePath = Path.of(folder.getPath(), createdFileInfo.getId() + getFileExtension(file));
+        createdFileInfos.forEach(fi -> {
+            Path outputFilePath = Path.of(fi.getFolder().getPath(),
+                    fi.getId() + getFileExtension(fi.getName()));
+            fi.setPath(outputFilePath.toString());
+        });
 
-            createdFileInfo.setPath(outputFilePath.toString());
-
-            return fileInfo;
-
-        } catch (IOException e) {
-            throw new ServerIOException(e.getMessage());
-        }
+        return createdFileInfos;
     }
 }

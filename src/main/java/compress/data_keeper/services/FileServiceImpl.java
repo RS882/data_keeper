@@ -1,6 +1,7 @@
 package compress.data_keeper.services;
 
 import compress.data_keeper.domain.dto.InputStreamDto;
+import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.entity.FileInfo;
@@ -23,7 +24,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
@@ -33,6 +36,7 @@ import static compress.data_keeper.domain.CustomMultipartFile.toCustomMultipartF
 import static compress.data_keeper.domain.dto.files.FileResponseDto.ORIGINAL_FILE_KEY;
 import static compress.data_keeper.services.utilities.FileActionUtilities.getFileActionServiceByContentType;
 import static compress.data_keeper.services.utilities.FileUtilities.checkFile;
+import static compress.data_keeper.services.utilities.FileUtilities.getNameFromSizes;
 
 @Service
 @RequiredArgsConstructor
@@ -66,7 +70,9 @@ public class FileServiceImpl implements FileService {
 
         final Folder folderForFile = folderService.getFolder(folderDtoMapperService.toDto(fileCreationDto), user, tempFolder);
 
-        final FileInfo fileInfo = fileInfoService.createFileInfo(file, folderForFile, fileCreationDto.getFileDescription());
+        FileInfoDto fileInfoDto = new FileInfoDto(file, folderForFile, fileCreationDto.getFileDescription());
+        fileInfoDto.setIsOriginalFile(true);
+        final FileInfo fileInfo = fileInfoService.createFileInfo(fileInfoDto);
 
         final String originalFilePath = dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
 
@@ -76,7 +82,7 @@ public class FileServiceImpl implements FileService {
         paths.put(ORIGINAL_FILE_KEY, originalFilePath);
         links.put(ORIGINAL_FILE_KEY, dataStorageService.getTempFullPath(originalFilePath));
 
-        Map<String, String> imgPaths = getImagesPaths(
+        Map<String, String> imgPaths = createImagesForFile(
                 file,
                 folderForFile.getPath(),
                 fileInfo.getId().toString());
@@ -94,7 +100,7 @@ public class FileServiceImpl implements FileService {
                 .build();
     }
 
-    private Map<String, String> getImagesPaths(
+    private Map<String, String> createImagesForFile(
             MultipartFile file,
             String folderPath,
             String fileUUID) {
@@ -103,22 +109,29 @@ public class FileServiceImpl implements FileService {
 
         final FileActionService fileActionService = getFileActionService(file);
 
+        final Folder folder = folderService.getFolderByPath(folderPath);
+
         Map<String, String> paths = new HashMap<>();
+
+        List<FileInfoDto> fileInfoDtoList = new ArrayList<>();
 
         if (fileActionService != null) {
 
             fileActionService.getFileImages(file).forEach((key, value) -> {
                 Path filePath = Path.of(folderPath, key, imgFileName);
-
                 InputStreamDto dto = new InputStreamDto(
                         value,
                         key + "." + IMAGE_FORMAT,
                         MediaType.IMAGE_JPEG_VALUE);
-
                 String imgFilePath = dataStorageService.uploadFIle(dto, filePath.toString()).object();
+
+                FileInfoDto fileInfoDto = new FileInfoDto(value, folder, imgFilePath, key);
+                fileInfoDtoList.add(fileInfoDto);
 
                 paths.put(key, imgFilePath);
             });
+
+            fileInfoService.createFileInfo(fileInfoDtoList);
         } else {
             paths.putAll(getNullImagesPaths());
         }
@@ -127,14 +140,12 @@ public class FileServiceImpl implements FileService {
 
     private Map<String, String> getNullImagesPaths() {
         Map<String, String> paths = new HashMap<>();
-        IMAGE_SIZES.forEach(size -> paths.put(size[0] + "x" + size[1], null));
+        IMAGE_SIZES.forEach(size -> paths.put(getNameFromSizes(size), null));
         return paths;
     }
 
     private Map<String, String> getTempImagesLinks(Map<String, String> paths) {
-
         Map<String, String> links = new HashMap<>();
-
         paths.forEach((key, value) ->
                 links.put(key, dataStorageService.getTempFullPath(value))
         );

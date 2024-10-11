@@ -6,6 +6,7 @@ import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.exception_handler.not_found.exceptions.FolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FolderRepository;
+import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FolderService;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
@@ -30,6 +31,8 @@ public class FolderServiceImpl implements FolderService {
 
     private final MinioClient minioClient;
 
+    private final DataStorageService dataStorageService;
+
     private final FolderRepository folderRepository;
 
     private String folderPrefix;
@@ -52,8 +55,8 @@ public class FolderServiceImpl implements FolderService {
         }
     }
 
-    private Folder getFolderByPath(String path) {
-
+    @Override
+    public Folder getFolderByPath(String path) {
         return folderRepository.findByPath(toWinStylePath(path))
                 .orElseThrow(() -> new FolderNotFoundException(path));
     }
@@ -81,8 +84,7 @@ public class FolderServiceImpl implements FolderService {
         return createFolder(folder);
     }
 
-    @Transactional
-    protected Folder createFolder(Folder folder) {
+    private Folder createFolder(Folder folder) {
 
         Folder savedFolder = folderRepository.save(folder);
         String folderPath = createFolderPath(savedFolder.getId().toString(), savedFolder.getOwner().getId());
@@ -93,6 +95,8 @@ public class FolderServiceImpl implements FolderService {
     }
 
     private String createFolderPath(String folderUUID, Long userId) {
+
+        dataStorageService.checkAndCreateBucket(bucketName);
 
         String path = Path.of(folderPrefix, userId.toString(), folderUUID).toString();
 

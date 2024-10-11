@@ -2,6 +2,7 @@ package compress.data_keeper.services.file_action_servieces;
 
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
+import compress.data_keeper.services.utilities.FileUtilities;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
+import static compress.data_keeper.services.utilities.FileUtilities.getNameFromSizes;
 
 @Service
 public class TextFileActionServiceImpl implements FileActionService {
@@ -26,7 +28,7 @@ public class TextFileActionServiceImpl implements FileActionService {
 
             return IMAGE_SIZES.stream()
                     .collect(Collectors.toMap(
-                            size -> size[0] + "x" + size[1],
+                            FileUtilities::getNameFromSizes,
                             size -> compressImg(image, size)
                     ));
         } catch (IOException e) {

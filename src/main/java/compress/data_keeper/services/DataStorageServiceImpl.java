@@ -20,7 +20,7 @@ import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 
 
 import static compress.data_keeper.domain.dto.InputStreamDto.getInputStreamDto;
-import static compress.data_keeper.services.utilities.FileMetaDataConstants.*;
+import static compress.data_keeper.constants.FileMetaDataConstants.*;
 
 @Service
 @RequiredArgsConstructor
@@ -33,10 +33,6 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Value("${bucket.name}")
     private String bucketName;
-
-    @Value("${prefix.public}")
-    private String prefixPublic;
-
 
     @Override
     public ObjectWriteResponse uploadFIle(String objectFile, String outputFile) {
@@ -217,7 +213,7 @@ public class DataStorageServiceImpl implements DataStorageService {
         builder.append("        \"s3:GetObject\"\n");
         builder.append("      ],\n");
         builder.append("      \"Resource\": [\n");
-        builder.append("        \"arn:aws:s3:::").append(checkedBucketName).append("/*/").append(prefixPublic).append("*\"\n");
+        builder.append("        \"arn:aws:s3:::").append(checkedBucketName).append("/*/").append("public").append("*\"\n");
         builder.append("      ]\n");
         builder.append("    }\n");
         builder.append("  ]\n");

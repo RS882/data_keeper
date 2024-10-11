@@ -50,11 +50,11 @@ public class VideoServiceImpl implements VideoService, MediaFormats {
     @Value("${prefix.dir}")
     private String dirPrefix;
 
-    @Value("${prefix.private}")
-    private String prefixPrivate;
 
-    @Value("${prefix.public}")
-    private String prefixPublic;
+    private final String prefixPrivate = "private";
+
+
+    private final String prefixPublic = "public";
 
     private final DataStorageService dataStorageService;
 

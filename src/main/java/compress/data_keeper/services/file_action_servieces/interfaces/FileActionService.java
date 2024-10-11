@@ -18,8 +18,7 @@ public interface FileActionService {
 
     Map<String, InputStream> getFileImages(MultipartFile file);
 
-    default
-    BufferedImage convertTextToImage(String text, int linesPerPage) {
+    default BufferedImage convertTextToImage(String text, int linesPerPage) {
         int width = 800;
         int height = 1000;
 
@@ -77,6 +76,9 @@ public interface FileActionService {
         } catch (IOException e) {
             throw new ServerIOException(e.getMessage());
         }
-        return new ByteArrayInputStream(outputStream.toByteArray());
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+        inputStream.mark(Integer.MAX_VALUE);
+
+        return inputStream;
     }
 }

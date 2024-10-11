@@ -20,8 +20,11 @@ public class FileInfo extends EntityInfo {
     @Column(name = "size")
     private Long size;
 
-    @Column(name = "hash")
+    @Column(name = "hash", length = 512)
     private String hash;
+
+    @Column(name="is_original_file")
+    private Boolean isOriginalFile;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "folder_id")

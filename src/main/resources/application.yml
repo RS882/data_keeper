@@ -30,8 +30,6 @@ bucket:
   name: ${BUCKET_NAME}
 prefix:
   dir: ${DIR_PREFIX}
-  public: ${PREFIX_PUBLIC}
-  private: ${PREFIX_PRIVATE}
 url-lifetime: ${LIFETIME:3}
 minio:
   accessKey: ${MINIO_ACCESS_KEY}

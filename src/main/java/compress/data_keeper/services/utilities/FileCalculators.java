@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class FileHashCalculator {
+public class FileCalculators {
 
     public static String calculateHash(InputStream inputStream) {
         return calculateHash(inputStream, "SHA-256");
@@ -15,12 +15,11 @@ public class FileHashCalculator {
 
     public static String calculateHash(InputStream inputStream, String algorithm) {
         try {
-
+            inputStream.reset();
             MessageDigest digest = MessageDigest.getInstance(algorithm);
 
             byte[] byteArray = new byte[1024];
             int bytesCount;
-
             while ((bytesCount = inputStream.read(byteArray)) != -1) {
                 digest.update(byteArray, 0, bytesCount);
             }
@@ -30,8 +29,27 @@ public class FileHashCalculator {
             for (byte b : bytes) {
                 sb.append(String.format("%02x", b));
             }
+            inputStream.reset();
             return sb.toString();
         } catch (NoSuchAlgorithmException | IOException e) {
+            throw new ServerIOException(e.getMessage());
+        }
+    }
+
+    public static long calculateFileSize(InputStream inputStream) {
+
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+        long size = 0;
+        try {
+            inputStream.reset();
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                size += bytesRead;
+                System.out.println();
+            }
+            inputStream.reset();
+            return size;
+        } catch (IOException e) {
             throw new ServerIOException(e.getMessage());
         }
     }
