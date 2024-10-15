@@ -1,5 +1,6 @@
 package compress.data_keeper.services.file_action_servieces.interfaces;
 
+import compress.data_keeper.exception_handler.bad_requeat.exceptions.TextIsNullException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -8,7 +9,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -19,6 +19,10 @@ public interface FileActionService {
     Map<String, InputStream> getFileImages(MultipartFile file);
 
     default BufferedImage convertTextToImage(String text, int linesPerPage) {
+
+        if (text == null) {
+            throw new TextIsNullException();
+        }
         int width = 800;
         int height = 1000;
 
@@ -73,7 +77,7 @@ public interface FileActionService {
 
             outputStream = new ByteArrayOutputStream();
             ImageIO.write(resizedImage, IMAGE_FORMAT, outputStream);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new ServerIOException(e.getMessage());
         }
         ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());

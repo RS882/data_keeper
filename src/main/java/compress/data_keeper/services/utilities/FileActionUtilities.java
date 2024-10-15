@@ -8,11 +8,13 @@ import org.springframework.http.MediaType;
 
 public class FileActionUtilities {
 
-    public static FileActionService getFileActionServiceByContentType(String contentType) {
+    public final static String OOXML_FILE_TYPE = "application/x-tika-ooxml";
 
+    public static FileActionService getFileActionServiceByContentType(String contentType) {
+        if (contentType == null) return null;
         return switch (contentType) {
             case MediaType.TEXT_PLAIN_VALUE -> new TextFileActionServiceImpl();
-            case "application/x-tika-ooxml"-> new OOXMLFileActionServiceImp();
+            case OOXML_FILE_TYPE -> new OOXMLFileActionServiceImp();
             default -> null;
         };
     }

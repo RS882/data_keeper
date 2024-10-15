@@ -7,15 +7,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileUtilities {
 
     public static String toUnixStylePath(String path) {
-        return path.replace("\\", "/");
+        return path == null ? null : path.replace("\\", "/");
     }
 
     public static String toWinStylePath(String path) {
-        return path.replace("/", "\\");
+        return path == null ? null :path.replace("/", "\\");
     }
 
     public static void checkFile(MultipartFile file) {
-        if (file.isEmpty()) throw new BadFileSizeException();
+        if (file.isEmpty()) {
+            throw new BadFileSizeException();
+        }
     }
 
     public static String getFileExtension(String fileName) {

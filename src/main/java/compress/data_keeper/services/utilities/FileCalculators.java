@@ -14,6 +14,8 @@ public class FileCalculators {
     }
 
     public static String calculateHash(InputStream inputStream, String algorithm) {
+        if (inputStream == null) return "";
+
         try {
             inputStream.reset();
             MessageDigest digest = MessageDigest.getInstance(algorithm);
@@ -37,6 +39,7 @@ public class FileCalculators {
     }
 
     public static long calculateFileSize(InputStream inputStream) {
+        if (inputStream == null) return 0;
 
         byte[] buffer = new byte[1024];
         int bytesRead;

@@ -7,13 +7,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
-import static compress.data_keeper.services.utilities.FileUtilities.getNameFromSizes;
 
 @Service
 public class TextFileActionServiceImpl implements FileActionService {
@@ -31,7 +29,7 @@ public class TextFileActionServiceImpl implements FileActionService {
                             FileUtilities::getNameFromSizes,
                             size -> compressImg(image, size)
                     ));
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new ServerIOException(e.getMessage());
         }
     }
