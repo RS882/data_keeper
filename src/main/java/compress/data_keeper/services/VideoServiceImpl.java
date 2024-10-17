@@ -346,7 +346,7 @@ public class VideoServiceImpl implements VideoService, MediaFormats {
         try {
             return isPublic ?
                     toUnixStylePath( storageUrl+ "/" + bucketName + "/" + path) :
-                    dataStorageService.getTempFullPath(path.toString());
+                    dataStorageService.getTempLink(path.toString());
         } catch (Exception e) {
             throw new MinioGetUrlException("something went wrong...");
         }

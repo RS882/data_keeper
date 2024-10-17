@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static compress.data_keeper.services.utilities.FileUtilities.getFileExtension;
 
@@ -46,5 +47,16 @@ public class FileInfoServiceImpl implements FileInfoService {
         });
 
         return createdFileInfos;
+    }
+
+    @Override
+    @Transactional
+    public List<FileInfo> getFileInfoByFolderId(UUID folderId) {
+        return fileInfoRepository.findByFolderId(folderId);
+    }
+
+    @Override
+    public List<FileInfo> updateFileInfos(List<FileInfo> fileInfos) {
+        return fileInfoRepository.saveAll(fileInfos);
     }
 }

@@ -11,16 +11,16 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
-import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
-
-
-import static compress.data_keeper.domain.dto.InputStreamDto.getInputStreamDto;
 import static compress.data_keeper.constants.FileMetaDataConstants.*;
+import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
+import static compress.data_keeper.domain.dto.InputStreamDto.getInputStreamDto;
 
 @Service
 @RequiredArgsConstructor
@@ -97,6 +97,26 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
+    public ObjectWriteResponse moveFile(String currentFilePath, String newFilePath) {
+        try {
+            ObjectWriteResponse newObject = minioClient.copyObject(
+                    CopyObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(newFilePath)
+                            .source(
+                                    CopySource.builder()
+                                            .bucket(bucketName)
+                                            .object(currentFilePath)
+                                            .build())
+                            .build());
+            deleteObject(currentFilePath);
+            return newObject;
+        } catch (Exception e) {
+            throw new ServerIOException(e.getMessage());
+        }
+    }
+
+    @Override
     public void checkAndCreateBucket(String checkedBucketName) {
         try {
             boolean found = minioClient
@@ -130,7 +150,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
-    public String getTempFullPath(String path) {
+    public String getTempLink(String path) {
 
         if (path == null) return null;
 
@@ -220,6 +240,41 @@ public class DataStorageServiceImpl implements DataStorageService {
         builder.append("}");
 
         return builder.toString();
+    }
+
+    @Override
+    public String createFolderPath(String folderUUID, Long userId, String folderPrefix) {
+
+        checkAndCreateBucket(bucketName);
+
+        String path = Path.of(folderPrefix, userId.toString(), folderUUID).toString();
+
+        try {
+            ObjectWriteResponse createdFolder = minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(path)
+                            .stream(
+                                    new ByteArrayInputStream(new byte[]{}), 0, -1)
+                            .build());
+            return createdFolder.object();
+        } catch (Exception e) {
+            throw new ServerIOException(e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteObject(String objectPath) {
+        try{
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectPath)
+                            .build());
+
+        }catch(Exception e){
+            throw new ServerIOException(e.getMessage());
+        }
     }
 }
 

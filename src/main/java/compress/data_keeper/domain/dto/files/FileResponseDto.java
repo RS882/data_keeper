@@ -13,8 +13,6 @@ import java.util.Map;
 @Schema(description = "DTO with file response information after operation with file")
 public class FileResponseDto {
 
-    public static final String ORIGINAL_FILE_KEY = "originalFile";
-
     @Schema(description = "Links for downloading files from bucket",
             example = """
                     {

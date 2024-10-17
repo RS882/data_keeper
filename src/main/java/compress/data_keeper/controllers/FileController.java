@@ -1,6 +1,7 @@
 package compress.data_keeper.controllers;
 
 import compress.data_keeper.controllers.API.FileAPI;
+import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
@@ -18,5 +19,10 @@ public class FileController implements FileAPI {
     @Override
     public ResponseEntity<FileResponseDto> saveFileTemporarily(FileCreationDto fileCreationDto, User currentUser) {
         return ResponseEntity.ok(fileService.uploadFileTemporary(fileCreationDto, currentUser));
+    }
+
+    @Override
+    public ResponseEntity<FileResponseDto> saveFileToBucket(FileDto dto, User currentUser) {
+        return null;
     }
 }

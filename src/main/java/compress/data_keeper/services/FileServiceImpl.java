@@ -3,11 +3,15 @@ package compress.data_keeper.services;
 import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
+import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
+import compress.data_keeper.exception_handler.forbidden.exceptions.UserDoesntHaveRightException;
+import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
+import compress.data_keeper.security.contstants.Role;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FileInfoService;
@@ -28,15 +32,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 import static compress.data_keeper.domain.CustomMultipartFile.toCustomMultipartFile;
-import static compress.data_keeper.domain.dto.files.FileResponseDto.ORIGINAL_FILE_KEY;
 import static compress.data_keeper.services.utilities.FileActionUtilities.getFileActionServiceByContentType;
-import static compress.data_keeper.services.utilities.FileUtilities.checkFile;
-import static compress.data_keeper.services.utilities.FileUtilities.getNameFromSizes;
+import static compress.data_keeper.services.utilities.FileUtilities.*;
 
 @Service
 @RequiredArgsConstructor
@@ -80,7 +83,7 @@ public class FileServiceImpl implements FileService {
         Map<String, String> links = new HashMap<>();
 
         paths.put(ORIGINAL_FILE_KEY, originalFilePath);
-        links.put(ORIGINAL_FILE_KEY, dataStorageService.getTempFullPath(originalFilePath));
+        links.put(ORIGINAL_FILE_KEY, dataStorageService.getTempLink(originalFilePath));
 
         Map<String, String> imgPaths = createImagesForFile(
                 file,
@@ -89,7 +92,7 @@ public class FileServiceImpl implements FileService {
 
         paths.putAll(imgPaths);
 
-        links.putAll(getTempImagesLinks(imgPaths));
+        links.putAll(getTempFileLinks(imgPaths));
 
         long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
 
@@ -144,10 +147,10 @@ public class FileServiceImpl implements FileService {
         return paths;
     }
 
-    private Map<String, String> getTempImagesLinks(Map<String, String> paths) {
+    private Map<String, String> getTempFileLinks(Map<String, String> paths) {
         Map<String, String> links = new HashMap<>();
         paths.forEach((key, value) ->
-                links.put(key, dataStorageService.getTempFullPath(value))
+                links.put(key, dataStorageService.getTempLink(value))
         );
         return links;
     }
@@ -162,5 +165,78 @@ public class FileServiceImpl implements FileService {
         } catch (IOException e) {
             throw new ServerIOException(e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public FileResponseDto saveTemporaryFile(FileDto dto, User user) {
+
+        String tempFilePath = dto.getFilePath();
+        String folderPath = getFolderPathByFilePath(tempFilePath);
+        Folder folder = folderService.getFolderByPath(folderPath);
+
+        checkUserRights(folder, user);
+
+        List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+        if (fileInfos.isEmpty()) {
+            throw new FileInFolderNotFoundException(folderPath);
+        }
+        List<FileInfo> updatedFileInfo = remoteFilesInBucket(fileInfos);
+
+        String newFolderPath = getNewPath(folder.getPath());
+        dataStorageService.deleteObject(folder.getPath());
+        folder.setPath(newFolderPath);
+
+
+        return null;
+    }
+
+    private FileResponseDto getFileResponseDtoByFileInfos(List<FileInfo> fileInfos) {
+
+        Map<String, String> links = new HashMap<>();
+
+        Map<String, String> paths = fileInfos.stream()
+                .collect(Collectors.toMap(
+                        fi -> fi.getIsOriginalFile() ? ORIGINAL_FILE_KEY : fi.getDescription(),
+                        FileInfo::getPath
+                ));
+
+        long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
+
+        return FileResponseDto.builder()
+                .linksToFiles(links)
+                .linksIsValidForMs(linkLifeTimeDuration)
+                .paths(paths)
+                .build();
+
+    }
+
+    private List<FileInfo> remoteFilesInBucket(List<FileInfo> filesInfo) {
+        return filesInfo.stream().map(fi -> {
+            String newFilePath = getNewPath(fi.getPath());
+            dataStorageService.moveFile(fi.getPath(), newFilePath);
+            fi.setPath(newFilePath);
+            return fi;
+        }).toList();
+    }
+
+    private String getNewPath(String tempFilePath) {
+        String normalizedTempFilePath = toUnixStylePath(tempFilePath);
+        String basePath = normalizedTempFilePath.substring(normalizedTempFilePath.indexOf("/"));
+        return dirPrefix + basePath;
+    }
+
+    private void checkUserRights(Folder folder, User user) {
+        if (user.getRole().equals(Role.ROLE_ADMIN)) {
+            return;
+        }
+        if (!folder.getOwner().equals(user)) {
+            throw new UserDoesntHaveRightException(user.getEmail());
+        }
+    }
+
+    private String getFolderPathByFilePath(String filePath) {
+        String normalizedPath = toUnixStylePath(filePath);
+        return normalizedPath.substring(0, normalizedPath.lastIndexOf("/"));
     }
 }

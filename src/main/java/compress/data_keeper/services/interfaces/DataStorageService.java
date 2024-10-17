@@ -16,9 +16,15 @@ public interface DataStorageService {
 
     ObjectWriteResponse uploadFIle(InputStreamDto inputStreamDto, String outputFile);
 
+    ObjectWriteResponse moveFile( String currentFilePath, String newFilePath);
+
     void checkAndCreateBucket(String bucketName);
 
-    String getTempFullPath(String path);
+    String getTempLink(String path);
 
     Map<String, String> getFileUserMetaData(String path);
+
+    String createFolderPath(String folderUUID, Long userId, String folderPrefix);
+
+    void deleteObject(String objectPath);
 }

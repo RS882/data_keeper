@@ -10,10 +10,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @Builder
-@Schema(description = "DTO with file for save in the bucket")
+@Schema(description = "DTO with file for save in the temporary bucket")
 public class FileCreationDto {
 
-    @Schema(description = "File for save in the bucket")
+    @Schema(description = "File for save in the temporary bucket")
     @NotNull(message = "File cannot be null")
     private MultipartFile file;
 
