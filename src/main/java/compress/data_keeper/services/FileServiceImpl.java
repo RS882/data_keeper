@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -77,25 +78,30 @@ public class FileServiceImpl implements FileService {
         fileInfoDto.setIsOriginalFile(true);
         final FileInfo fileInfo = fileInfoService.createFileInfo(fileInfoDto);
 
-        final String originalFilePath = dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
+        dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
 
-        Map<String, String> paths = new HashMap<>();
-        Map<String, String> links = new HashMap<>();
+        List<FileInfo> filesInfos = new ArrayList<>();
+        filesInfos.add(fileInfo);
 
-        paths.put(ORIGINAL_FILE_KEY, originalFilePath);
-        links.put(ORIGINAL_FILE_KEY, dataStorageService.getTempLink(originalFilePath));
-
-        Map<String, String> imgPaths = createImagesForFile(
+        List<FileInfo> imgFilesInfos = createImagesForFile(
                 file,
                 folderForFile.getPath(),
                 fileInfo.getId().toString());
 
-        paths.putAll(imgPaths);
+        filesInfos.addAll(imgFilesInfos);
 
-        links.putAll(getTempFileLinks(imgPaths));
+        return getFileResponseDtoByFileInfos(filesInfos);
+    }
 
+    private FileResponseDto getFileResponseDtoByFileInfos(List<FileInfo> fileInfos) {
+        Map<String, String> paths = new HashMap<>();
+        fileInfos.forEach(fi -> {
+            String key = fi.getIsOriginalFile() ? ORIGINAL_FILE_KEY : fi.getDescription();
+            String value = fi.getPath();
+            paths.put(key, value);
+        });
+        Map<String, String> links = getTempFileLinks(paths);
         long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
-
         return FileResponseDto.builder()
                 .linksToFiles(links)
                 .linksIsValidForMs(linkLifeTimeDuration)
@@ -103,7 +109,7 @@ public class FileServiceImpl implements FileService {
                 .build();
     }
 
-    private Map<String, String> createImagesForFile(
+    private List<FileInfo> createImagesForFile(
             MultipartFile file,
             String folderPath,
             String fileUUID) {
@@ -114,13 +120,11 @@ public class FileServiceImpl implements FileService {
 
         final Folder folder = folderService.getFolderByPath(folderPath);
 
-        Map<String, String> paths = new HashMap<>();
-
         List<FileInfoDto> fileInfoDtoList = new ArrayList<>();
 
         if (fileActionService != null) {
-
-            fileActionService.getFileImages(file).forEach((key, value) -> {
+            Map<String, InputStream> imgFileStreams = fileActionService.getFileImages(file);
+            imgFileStreams.forEach((key, value) -> {
                 Path filePath = Path.of(folderPath, key, imgFileName);
                 InputStreamDto dto = new InputStreamDto(
                         value,
@@ -130,21 +134,22 @@ public class FileServiceImpl implements FileService {
 
                 FileInfoDto fileInfoDto = new FileInfoDto(value, folder, imgFilePath, key);
                 fileInfoDtoList.add(fileInfoDto);
-
-                paths.put(key, imgFilePath);
             });
-
-            fileInfoService.createFileInfo(fileInfoDtoList);
+            return fileInfoService.createFileInfo(fileInfoDtoList);
         } else {
-            paths.putAll(getNullImagesPaths());
+            return getEmptyFilesInfos();
         }
-        return paths;
     }
 
-    private Map<String, String> getNullImagesPaths() {
-        Map<String, String> paths = new HashMap<>();
-        IMAGE_SIZES.forEach(size -> paths.put(getNameFromSizes(size), null));
-        return paths;
+    private List<FileInfo> getEmptyFilesInfos() {
+
+        return IMAGE_SIZES.stream().map(s ->
+                FileInfo.builder()
+                        .isOriginalFile(false)
+                        .path(null)
+                        .description(getNameFromSizes(s))
+                        .build()
+        ).collect(Collectors.toList());
     }
 
     private Map<String, String> getTempFileLinks(Map<String, String> paths) {
@@ -187,28 +192,7 @@ public class FileServiceImpl implements FileService {
         dataStorageService.deleteObject(folder.getPath());
         folder.setPath(newFolderPath);
 
-
-        return null;
-    }
-
-    private FileResponseDto getFileResponseDtoByFileInfos(List<FileInfo> fileInfos) {
-
-        Map<String, String> links = new HashMap<>();
-
-        Map<String, String> paths = fileInfos.stream()
-                .collect(Collectors.toMap(
-                        fi -> fi.getIsOriginalFile() ? ORIGINAL_FILE_KEY : fi.getDescription(),
-                        FileInfo::getPath
-                ));
-
-        long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
-
-        return FileResponseDto.builder()
-                .linksToFiles(links)
-                .linksIsValidForMs(linkLifeTimeDuration)
-                .paths(paths)
-                .build();
-
+        return getFileResponseDtoByFileInfos(updatedFileInfo);
     }
 
     private List<FileInfo> remoteFilesInBucket(List<FileInfo> filesInfo) {

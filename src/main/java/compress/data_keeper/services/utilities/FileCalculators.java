@@ -48,7 +48,6 @@ public class FileCalculators {
             inputStream.reset();
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 size += bytesRead;
-                System.out.println();
             }
             inputStream.reset();
             return size;

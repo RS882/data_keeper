@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static compress.data_keeper.services.utilities.FileUtilities.getFileExtension;
+import static compress.data_keeper.services.utilities.FileUtilities.toUnixStylePath;
 
 @Service
 @RequiredArgsConstructor
@@ -41,9 +42,11 @@ public class FileInfoServiceImpl implements FileInfoService {
         List<FileInfo> createdFileInfos = fileInfoRepository.saveAll(fileInfos);
 
         createdFileInfos.forEach(fi -> {
-            Path outputFilePath = Path.of(fi.getFolder().getPath(),
-                    fi.getId() + getFileExtension(fi.getName()));
-            fi.setPath(outputFilePath.toString());
+            if (fi.getPath() == null || fi.getPath().isBlank()) {
+                Path outputFilePath = Path.of(fi.getFolder().getPath(),
+                        fi.getId() + getFileExtension(fi.getName()));
+                fi.setPath(toUnixStylePath(outputFilePath.toString()));
+            }
         });
 
         return createdFileInfos;
