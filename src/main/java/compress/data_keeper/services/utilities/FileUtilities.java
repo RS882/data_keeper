@@ -33,4 +33,9 @@ public class FileUtilities {
         }
         return sizes[0] + "x" + sizes[1];
     }
+
+    public static String getFolderPathByFilePath(String filePath) {
+        String normalizedPath = toUnixStylePath(filePath);
+        return normalizedPath.substring(0, normalizedPath.lastIndexOf("/"));
+    }
 }

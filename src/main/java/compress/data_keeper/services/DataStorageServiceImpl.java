@@ -5,25 +5,32 @@ import compress.data_keeper.exception_handler.server_exception.ServerIOException
 import compress.data_keeper.services.interfaces.DataStorageService;
 import io.minio.*;
 import io.minio.http.Method;
+import io.minio.messages.DeleteError;
+import io.minio.messages.DeleteObject;
+import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
 import static compress.data_keeper.constants.FileMetaDataConstants.*;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 import static compress.data_keeper.domain.dto.InputStreamDto.getInputStreamDto;
+import static compress.data_keeper.services.utilities.FileUtilities.toUnixStylePath;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DataStorageServiceImpl implements DataStorageService {
 
     private final MinioClient minioClient;
@@ -36,9 +43,7 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public ObjectWriteResponse uploadFIle(String objectFile, String outputFile) {
-
         checkAndCreateBucket();
-
         try {
             return minioClient.uploadObject(
                     UploadObjectArgs
@@ -54,9 +59,7 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public ObjectWriteResponse uploadFIle(InputStream inputStream, String outputFile, String originalFileName) {
-
         InputStreamDto dto = getInputStreamDto(inputStream, originalFileName, "image/" + IMAGE_FORMAT);
-
         return uploadFIle(dto, outputFile);
     }
 
@@ -65,22 +68,16 @@ public class DataStorageServiceImpl implements DataStorageService {
         String fileContentType = file.getContentType();
         String contentType = fileContentType == null || fileContentType.isEmpty() ?
                 MediaType.APPLICATION_OCTET_STREAM_VALUE : fileContentType;
-
         InputStreamDto dto = getInputStreamDto(file, contentType);
-
         return uploadFIle(dto, outputFile);
     }
 
     @Override
     public ObjectWriteResponse uploadFIle(InputStreamDto inputStreamDto, String outputFile) {
-
         checkAndCreateBucket();
-
         InputStream fileInputStream = inputStreamDto.getInputStream();
-
         Map<String, String> metaData = new HashMap<>();
         metaData.put(USER_METADATA_PREFIX + ORIGINAL_FILENAME, inputStreamDto.getOriginalFilename());
-
         try {
             return minioClient.putObject(
                     PutObjectArgs.builder()
@@ -130,7 +127,7 @@ public class DataStorageServiceImpl implements DataStorageService {
                         MakeBucketArgs
                                 .builder()
                                 .bucket(checkedBucketName)
-                                .objectLock(true)
+//                                .objectLock(true)
                                 .build());
 
                 minioClient.setBucketPolicy(
@@ -151,11 +148,10 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public String getTempLink(String path) {
-
-        if (path == null) return null;
-
+        if (path == null) {
+            return null;
+        }
         Map<String, String> queryParams = getQueryParamsForFile(path);
-
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs
@@ -172,11 +168,8 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     private Map<String, String> getQueryParamsForFile(String path) {
-
         Map<String, String> queryParams = new HashMap<>();
-
         String originalFileName = getFileUserMetaData(path).get(ORIGINAL_FILENAME.toLowerCase());
-
         if (originalFileName != null || !originalFileName.isBlank()) {
             queryParams.put(RESPONSE_CONTENT_DISPOSITION, ATTACHMENT_FILENAME + originalFileName);
         }
@@ -195,10 +188,6 @@ public class DataStorageServiceImpl implements DataStorageService {
         } catch (Exception e) {
             throw new ServerIOException(e.getMessage());
         }
-    }
-
-    private String toUnixStylePath(String path) {
-        return path.replace("\\", "/");
     }
 
     private String createBucketPolicy(String checkedBucketName) {
@@ -245,37 +234,99 @@ public class DataStorageServiceImpl implements DataStorageService {
     @Override
     public String createFolderPath(String folderUUID, Long userId, String folderPrefix) {
 
-        checkAndCreateBucket(bucketName);
-
+//        checkAndCreateBucket(bucketName);
+//
         String path = Path.of(folderPrefix, userId.toString(), folderUUID).toString();
+//
+//        try {
+//            ObjectWriteResponse createdFolder = minioClient.putObject(
+//                    PutObjectArgs.builder()
+//                            .bucket(bucketName)
+//                            .object(toUnixStylePath(path))
+//                            .stream(
+//                                    new ByteArrayInputStream(new byte[]{}), 0, -1)
+//                            .build());
+//
+//            return toUnixStylePath(createdFolder.object());
+        return toUnixStylePath(path);
+//        } catch (Exception e) {
+//            throw new ServerIOException(e.getMessage());
+//        }
+    }
 
+    @Override
+    public void deleteObject(String objectPath) {
         try {
-            ObjectWriteResponse createdFolder = minioClient.putObject(
-                    PutObjectArgs.builder()
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
                             .bucket(bucketName)
-                            .object(path)
-                            .stream(
-                                    new ByteArrayInputStream(new byte[]{}), 0, -1)
+                            .object(objectPath)
                             .build());
-            return createdFolder.object();
+            log.info("Object deleted successful : {}", objectPath);
+        } catch (Exception e) {
+            throw new ServerIOException("Failed to delete file from Minio: " + objectPath);
+        }
+    }
+
+    @Override
+    public boolean isObjectExist(String objectPath) {
+        try {
+            minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectPath)
+                            .build()
+            );
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public void deleteObjectsFromBucket(String bucketName, List<String> objectsNames) {
+
+        List<DeleteObject> objects = objectsNames.stream()
+                .map(DeleteObject::new)
+                .collect(Collectors.toList());
+        try {
+            Iterable<Result<DeleteError>> results =
+                    minioClient.removeObjects(
+                            RemoveObjectsArgs.builder()
+                                    .bucket(bucketName)
+                                    .objects(objects)
+                                    .build());
+            log.info("Removed {} objects from the bucket {}", objects.size(), bucketName);
+            for (Result<DeleteError> result : results) {
+                DeleteError error = result.get();
+                log.error("Error in deleting object {}; {}", error.objectName(), error.message());
+            }
+        } catch (Exception e) {
+            throw new ServerIOException("Failed to delete file from Minio");
+        }
+    }
+
+    @Override
+    public void deleteBucket(String bucketName) {
+        try {
+            minioClient.removeBucket(
+                    RemoveBucketArgs.builder()
+                            .bucket(bucketName)
+                            .build()
+            );
+            log.info("Bucket '{}' deleted successfully", bucketName);
         } catch (Exception e) {
             throw new ServerIOException(e.getMessage());
         }
     }
 
     @Override
-    public void deleteObject(String objectPath) {
-        try{
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(objectPath)
-                            .build());
-
-        }catch(Exception e){
-            throw new ServerIOException(e.getMessage());
-        }
+    public Iterable<Result<Item>> getAllObjectFromBucket(String bucketName) {
+        return minioClient.listObjects(
+                ListObjectsArgs.builder()
+                        .bucket(bucketName)
+                        .recursive(true)
+                        .build()
+        );
     }
 }
-
-

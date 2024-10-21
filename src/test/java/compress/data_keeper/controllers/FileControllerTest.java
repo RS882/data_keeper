@@ -3,13 +3,18 @@ package compress.data_keeper.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
+import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
+import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.mapping.UserMapperService;
 import compress.data_keeper.services.utilities.FileUtilities;
+import io.minio.Result;
+import io.minio.messages.Item;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
@@ -20,13 +25,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.services.interfaces.FileService.ORIGINAL_FILE_KEY;
+import static compress.data_keeper.services.utilities.FileUtilities.getFolderPathByFilePath;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,9 +57,18 @@ class FileControllerTest {
     @Autowired
     private UserMapperService mapperService;
 
+    @Autowired
+    private DataStorageService dataStorageService;
+
+    @Value("${bucket.name}")
+    private String bucketName;
+
     private ObjectMapper mapper = new ObjectMapper();
 
-    private String accessToken1;
+    private String accessToken;
+    private Long currentUserId;
+
+    private List<String> uploadedObjectPath = new ArrayList<>();
 
     private static final String USER1_EMAIL = "Test" + "@example.com";
     private static final String USER1_PASSWORD = "Querty123!";
@@ -86,9 +100,74 @@ class FileControllerTest {
                 .andReturn();
 
         String jsonResponse = result.getResponse().getContentAsString();
-        TokenResponseDto dto2 = mapper.readValue(jsonResponse, TokenResponseDto.class);
-        accessToken1 = dto2.getAccessToken();
+        TokenResponseDto responseDto = mapper.readValue(jsonResponse, TokenResponseDto.class);
+        accessToken = responseDto.getAccessToken();
+        currentUserId = responseDto.getUserId();
     }
+
+    @AfterAll
+    public void cleanUpMinio() {
+        Iterable<Result<Item>> objects = dataStorageService.getAllObjectFromBucket(bucketName);
+        List<String> objectsToDelete = StreamSupport.stream(objects.spliterator(), false)
+                .map(result -> {
+                    try {
+                        return result.get().objectName();
+                    } catch (Exception e) {
+                        throw new ServerIOException(e.getMessage());
+                    }
+                }).toList();
+        dataStorageService.deleteObjectsFromBucket(bucketName, objectsToDelete);
+        dataStorageService.deleteBucket(bucketName);
+    }
+
+    private void checkResponse(FileResponseDto responseDto) {
+        checkOriginalFilePath(responseDto);
+        checkImageFilePathIfPathExists(responseDto);
+    }
+
+    private void checkOriginalFilePath(FileResponseDto responseDto) {
+        String originalFileLink = responseDto.getLinksToFiles().get(ORIGINAL_FILE_KEY);
+        assertNotNull(originalFileLink);
+        assertInstanceOf(String.class, originalFileLink);
+
+        String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
+        assertNotNull(originalFilePath);
+        assertInstanceOf(String.class, originalFilePath);
+        assertTrue(dataStorageService.isObjectExist(originalFilePath));
+        String savedFolderPath = getFolderPathByFilePath(originalFilePath);
+        uploadedObjectPath.add(savedFolderPath);
+    }
+
+    private void checkImageFilePathIfPathExists(FileResponseDto responseDto) {
+        Set<String> sizes = IMAGE_SIZES.stream()
+                .map(FileUtilities::getNameFromSizes)
+                .collect(Collectors.toSet());
+
+        sizes.forEach(s -> {
+            String linkValue = responseDto.getLinksToFiles().get(s);
+            assertNotNull(linkValue);
+            assertInstanceOf(String.class, linkValue);
+            String pathValue = responseDto.getPaths().get(s);
+            assertNotNull(pathValue);
+            assertInstanceOf(String.class, pathValue);
+            assertTrue(dataStorageService.isObjectExist(pathValue));
+        });
+    }
+
+    private void checkImageFilePathIfPathNotExists(FileResponseDto responseDto) {
+        Set<String> sizes = IMAGE_SIZES.stream()
+                .map(FileUtilities::getNameFromSizes)
+                .collect(Collectors.toSet());
+
+        sizes.forEach(s -> {
+            String linkValue = responseDto.getLinksToFiles().get(s);
+            assertNull(linkValue);
+            String pathValue = responseDto.getPaths().get(s);
+            assertNull(pathValue);
+            assertFalse(dataStorageService.isObjectExist(pathValue));
+        });
+    }
+
 
     @Nested
     @DisplayName("POST /v1/file/temp")
@@ -115,7 +194,7 @@ class FileControllerTest {
                             .param("folderDescription", folderDescription)
                             .param("folderPath", folderPath)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
@@ -128,24 +207,7 @@ class FileControllerTest {
 
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
-            String originalFileLink = responseDto.getLinksToFiles().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFileLink);
-            assertInstanceOf(String.class, originalFileLink);
-
-            String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFilePath);
-            assertInstanceOf(String.class, originalFilePath);
-
-            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
-
-            sizes.forEach(s -> {
-                String linkValue = responseDto.getLinksToFiles().get(s);
-                assertNotNull(linkValue);
-                assertInstanceOf(String.class, linkValue);
-                String pathValue = responseDto.getPaths().get(s);
-                assertNotNull(pathValue);
-                assertInstanceOf(String.class, pathValue);
-            });
+            checkResponse(responseDto);
         }
 
         @Test
@@ -160,7 +222,7 @@ class FileControllerTest {
             MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
@@ -173,24 +235,7 @@ class FileControllerTest {
 
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
-            String originalFileLink = responseDto.getLinksToFiles().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFileLink);
-            assertInstanceOf(String.class, originalFileLink);
-
-            String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFilePath);
-            assertInstanceOf(String.class, originalFilePath);
-
-            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
-
-            sizes.forEach(s -> {
-                String linkValue = responseDto.getLinksToFiles().get(s);
-                assertNotNull(linkValue);
-                assertInstanceOf(String.class, linkValue);
-                String pathValue = responseDto.getPaths().get(s);
-                assertNotNull(pathValue);
-                assertInstanceOf(String.class, pathValue);
-            });
+            checkResponse(responseDto);
         }
 
         @Test
@@ -215,7 +260,7 @@ class FileControllerTest {
                             .param("folderDescription", folderDescription)
                             .param("folderPath", folderPath)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andReturn();
 
@@ -242,7 +287,7 @@ class FileControllerTest {
                             .param("folderDescription", folderDescription2)
                             .param("folderPath", folderPath2)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
@@ -255,24 +300,7 @@ class FileControllerTest {
 
             FileResponseDto responseDto2 = mapper.readValue(jsonResponse2, FileResponseDto.class);
 
-            String originalFileLink2 = responseDto2.getLinksToFiles().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFileLink2);
-            assertInstanceOf(String.class, originalFileLink2);
-
-            String originalFilePath2 = responseDto2.getPaths().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFilePath2);
-            assertInstanceOf(String.class, originalFilePath2);
-
-            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
-
-            sizes.forEach(s -> {
-                String linkValue = responseDto2.getLinksToFiles().get(s);
-                assertNotNull(linkValue);
-                assertInstanceOf(String.class, linkValue);
-                String pathValue = responseDto2.getPaths().get(s);
-                assertNotNull(pathValue);
-                assertInstanceOf(String.class, pathValue);
-            });
+            checkResponse(responseDto2);
         }
 
         @Test
@@ -299,7 +327,7 @@ class FileControllerTest {
                             .param("folderDescription", folderDescription)
                             .param("folderPath", folderPath)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
@@ -312,22 +340,9 @@ class FileControllerTest {
 
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
-            String originalFileLink = responseDto.getLinksToFiles().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFileLink);
-            assertInstanceOf(String.class, originalFileLink);
+            checkOriginalFilePath(responseDto);
 
-            String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-            assertNotNull(originalFilePath);
-            assertInstanceOf(String.class, originalFilePath);
-
-            Set<String> sizes = IMAGE_SIZES.stream().map(FileUtilities::getNameFromSizes).collect(Collectors.toSet());
-
-            sizes.forEach(s -> {
-                String linkValue = responseDto.getLinksToFiles().get(s);
-                assertNull(linkValue);
-                String pathValue = responseDto.getPaths().get(s);
-                assertNull(pathValue);
-            });
+            checkImageFilePathIfPathNotExists(responseDto);
         }
 
         @Test
@@ -351,7 +366,7 @@ class FileControllerTest {
                             .param("folderDescription", folderDescription)
                             .param("folderPath", folderPath)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isBadRequest())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").isNotEmpty())
@@ -380,7 +395,7 @@ class FileControllerTest {
                             .param("folderDescription", folderDescription)
                             .param("folderPath", folderPath)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isNotFound())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").isNotEmpty())

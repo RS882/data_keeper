@@ -218,9 +218,4 @@ public class FileServiceImpl implements FileService {
             throw new UserDoesntHaveRightException(user.getEmail());
         }
     }
-
-    private String getFolderPathByFilePath(String filePath) {
-        String normalizedPath = toUnixStylePath(filePath);
-        return normalizedPath.substring(0, normalizedPath.lastIndexOf("/"));
-    }
 }

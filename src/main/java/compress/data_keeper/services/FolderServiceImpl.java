@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import static compress.data_keeper.services.utilities.FileUtilities.toUnixStylePath;
 import static compress.data_keeper.services.utilities.FileUtilities.toWinStylePath;
 
 @Service
@@ -46,7 +47,7 @@ public class FolderServiceImpl implements FolderService {
     @Override
     @Transactional
     public Folder getFolderByPath(String path) {
-        return folderRepository.findByPath(toWinStylePath(path))
+        return folderRepository.findByPath(toUnixStylePath(path))
                 .orElseThrow(() -> new FolderNotFoundException(path));
     }
 
