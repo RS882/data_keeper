@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
 
+import javax.xml.transform.sax.SAXResult;
+
 @Data
 @Builder
 @Schema(description = "DTO with folder information")
@@ -22,4 +24,6 @@ public class FolderDto {
 
     @Schema(description = "Path of folder", example = "http://bucket/isiisi/23")
     private String path;
+
+    private String bucketName;
 }

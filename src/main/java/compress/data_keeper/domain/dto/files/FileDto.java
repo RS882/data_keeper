@@ -1,5 +1,7 @@
 package compress.data_keeper.domain.dto.files;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,4 +17,9 @@ public class FileDto {
     @NotNull(message = "Path cannot be null")
     @NotBlank(message = "Path cannot be empty or blank")
     private String filePath;
+
+    @JsonCreator
+    public FileDto(@JsonProperty("filePath") String filePath) {
+        this.filePath = filePath;
+    }
 }

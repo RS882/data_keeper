@@ -18,6 +18,7 @@ import static compress.data_keeper.services.utilities.FileCalculators.calculateF
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileInfoDto {
+    private String bucketName;
     private String fileName;
     private String fileDescription;
     private Long fileSize;

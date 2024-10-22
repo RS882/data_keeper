@@ -1,10 +1,10 @@
 package compress.data_keeper.controllers.API;
 
-import compress.data_keeper.domain.dto.files.FileDto;
-import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.domain.dto.ResponseMessageDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
+import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,7 +17,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 @Tag(name = "File Controller", description = "Controller for CRUD operation with file")
 @RequestMapping("/v1/file")
@@ -92,7 +95,7 @@ public interface FileAPI {
     @PatchMapping("/save")
     ResponseEntity<FileResponseDto> saveFileToBucket(
             @Valid
-            @RequestBody
+            @org.springframework.web.bind.annotation.RequestBody
             @Parameter(description = "DTO with file information")
             FileDto dto,
             @AuthenticationPrincipal

@@ -38,8 +38,19 @@ public class DataStorageServiceImpl implements DataStorageService {
     @Value("${url-lifetime}")
     private int urlLifeTime;
 
-    @Value("${bucket.name}")
     private String bucketName;
+
+    private String newBucketName;
+
+    @Override
+    public void setBucketName(String bucketName) {
+        this.bucketName = bucketName;
+    }
+
+    @Override
+    public void setNewBucketName(String newBucketName) {
+        this.newBucketName = newBucketName;
+    }
 
     @Override
     public ObjectWriteResponse uploadFIle(String objectFile, String outputFile) {
@@ -95,10 +106,11 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public ObjectWriteResponse moveFile(String currentFilePath, String newFilePath) {
+        checkAndCreateBucket(newBucketName, true);
         try {
             ObjectWriteResponse newObject = minioClient.copyObject(
                     CopyObjectArgs.builder()
-                            .bucket(bucketName)
+                            .bucket(newBucketName)
                             .object(newFilePath)
                             .source(
                                     CopySource.builder()
@@ -114,7 +126,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
-    public void checkAndCreateBucket(String checkedBucketName) {
+    public void checkAndCreateBucket(String checkedBucketName, boolean isObjectLock) {
         try {
             boolean found = minioClient
                     .bucketExists(
@@ -127,7 +139,7 @@ public class DataStorageServiceImpl implements DataStorageService {
                         MakeBucketArgs
                                 .builder()
                                 .bucket(checkedBucketName)
-//                                .objectLock(true)
+                                .objectLock(isObjectLock)
                                 .build());
 
                 minioClient.setBucketPolicy(
@@ -143,15 +155,15 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     public void checkAndCreateBucket() {
-        checkAndCreateBucket(bucketName);
+        checkAndCreateBucket(bucketName, false);
     }
 
     @Override
-    public String getTempLink(String path) {
+    public String getTempLink(String path, String bucketName) {
         if (path == null) {
             return null;
         }
-        Map<String, String> queryParams = getQueryParamsForFile(path);
+        Map<String, String> queryParams = getQueryParamsForFile(path,bucketName);
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs
@@ -167,9 +179,13 @@ public class DataStorageServiceImpl implements DataStorageService {
         }
     }
 
-    private Map<String, String> getQueryParamsForFile(String path) {
+    public String getTempLink(String path) {
+        return getTempLink(path, bucketName);
+    }
+
+    private Map<String, String> getQueryParamsForFile(String path, String bucketName) {
         Map<String, String> queryParams = new HashMap<>();
-        String originalFileName = getFileUserMetaData(path).get(ORIGINAL_FILENAME.toLowerCase());
+        String originalFileName = getFileUserMetaData(path,bucketName).get(ORIGINAL_FILENAME.toLowerCase());
         if (originalFileName != null || !originalFileName.isBlank()) {
             queryParams.put(RESPONSE_CONTENT_DISPOSITION, ATTACHMENT_FILENAME + originalFileName);
         }
@@ -177,7 +193,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
-    public Map<String, String> getFileUserMetaData(String path) {
+    public Map<String, String> getFileUserMetaData(String path, String bucketName) {
         try {
             return minioClient.statObject(
                             StatObjectArgs.builder()

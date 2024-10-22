@@ -43,7 +43,7 @@ public class User {
     @Column(name = "login_blocked_until")
     private LocalDateTime loginBlockedUntil;
 
-    @OneToMany(mappedBy = "owner")
+    @OneToMany(mappedBy = "owner", fetch = FetchType.EAGER)
     private Set<Folder> folderSet = new HashSet<>();
 
     @OneToMany(mappedBy = "user")

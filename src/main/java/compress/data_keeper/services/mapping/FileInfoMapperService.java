@@ -15,6 +15,7 @@ public abstract class FileInfoMapperService {
     @Mapping(target = "size", source = "fileSize")
     @Mapping(target = "folder", source = "fileFolder")
     @Mapping(target = "path", source = "filePath")
+    @Mapping(target = "bucketName", source = "bucketName")
     @Mapping(target = "type", source = "fileType")
     @Mapping(target = "hash", expression = "java(getHash(dto))")
     public abstract FileInfo toFileInfo(FileInfoDto dto);

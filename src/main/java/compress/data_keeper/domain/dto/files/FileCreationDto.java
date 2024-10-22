@@ -1,6 +1,5 @@
 package compress.data_keeper.domain.dto.files;
 
-import compress.data_keeper.domain.dto.UserParameters;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

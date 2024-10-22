@@ -1,10 +1,10 @@
 package compress.data_keeper.controllers;
 
 import compress.data_keeper.controllers.API.FileAPI;
-import compress.data_keeper.domain.dto.files.FileDto;
-import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
+import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.services.interfaces.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +23,6 @@ public class FileController implements FileAPI {
 
     @Override
     public ResponseEntity<FileResponseDto> saveFileToBucket(FileDto dto, User currentUser) {
-        return null;
+        return ResponseEntity.ok(fileService.saveTemporaryFile(dto, currentUser));
     }
 }

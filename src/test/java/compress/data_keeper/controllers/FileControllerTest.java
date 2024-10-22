@@ -60,8 +60,10 @@ class FileControllerTest {
     @Autowired
     private DataStorageService dataStorageService;
 
-    @Value("${bucket.name}")
     private String bucketName;
+
+    @Value("${bucket.temp}")
+    private String tempBucketName;
 
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -107,7 +109,7 @@ class FileControllerTest {
 
     @AfterAll
     public void cleanUpMinio() {
-        Iterable<Result<Item>> objects = dataStorageService.getAllObjectFromBucket(bucketName);
+           Iterable<Result<Item>> objects = dataStorageService.getAllObjectFromBucket(bucketName);
         List<String> objectsToDelete = StreamSupport.stream(objects.spliterator(), false)
                 .map(result -> {
                     try {
@@ -172,6 +174,11 @@ class FileControllerTest {
     @Nested
     @DisplayName("POST /v1/file/temp")
     class FileTempUploadTest {
+
+        @BeforeEach
+        void setUp() throws Exception {
+           bucketName = tempBucketName;
+        }
 
         @Test
         public void create_file_temp_status_200_for_new_txt_file_in_new_dir() throws Exception {

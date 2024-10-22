@@ -25,6 +25,9 @@ public abstract class EntityInfo {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "bucket_name")
+    private String bucketName;
+
     @Column(name = "path")
     private String path;
 

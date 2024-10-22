@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import static compress.data_keeper.services.utilities.FileUtilities.toUnixStylePath;
-import static compress.data_keeper.services.utilities.FileUtilities.toWinStylePath;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +67,7 @@ public class FolderServiceImpl implements FolderService {
         Folder folder = Folder.builder()
                 .name(folderName)
                 .description(dto.getDescription())
+                .bucketName(dto.getBucketName())
                 .owner(user)
                 .build();
 

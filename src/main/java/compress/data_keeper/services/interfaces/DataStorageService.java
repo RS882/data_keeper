@@ -11,6 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 public interface DataStorageService {
+
+    void setBucketName(String bucketName);
+
+    void setNewBucketName(String newBucketName);
+
     ObjectWriteResponse uploadFIle(String objectFile, String outputFile);
 
     ObjectWriteResponse uploadFIle(InputStream inputStream, String outputFile, String originalFileName);
@@ -19,13 +24,15 @@ public interface DataStorageService {
 
     ObjectWriteResponse uploadFIle(InputStreamDto inputStreamDto, String outputFile);
 
-    ObjectWriteResponse moveFile( String currentFilePath, String newFilePath);
+    ObjectWriteResponse moveFile(String currentFilePath, String newFilePath);
 
-    void checkAndCreateBucket(String bucketName);
+    void checkAndCreateBucket(String checkedBucketName, boolean isObjectLock);
+
+    String getTempLink(String path, String bucketName);
 
     String getTempLink(String path);
 
-    Map<String, String> getFileUserMetaData(String path);
+    Map<String, String> getFileUserMetaData(String path, String bucketName);
 
     String createFolderPath(String folderUUID, Long userId, String folderPrefix);
 

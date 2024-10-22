@@ -28,6 +28,7 @@ storage:
   url: ${STORAGE_URL}
 bucket:
   name: ${BUCKET_NAME}
+  temp: ${BUCKET_TEMP_NAME}
 prefix:
   dir: ${DIR_PREFIX}
 url-lifetime: ${LIFETIME:3}

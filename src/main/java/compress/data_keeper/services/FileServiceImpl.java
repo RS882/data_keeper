@@ -5,6 +5,7 @@ import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
@@ -64,18 +65,30 @@ public class FileServiceImpl implements FileService {
     @Value("${data.temp-folder}")
     private String tempFolder;
 
+    @Value("${bucket.name}")
+    private String bucketName;
+
+    @Value("${bucket.temp}")
+    private String tempBucketName;
+
     @Override
     @Transactional
     public FileResponseDto uploadFileTemporary(FileCreationDto fileCreationDto, User user) {
+
+        dataStorageService.setBucketName(tempBucketName);
 
         MultipartFile file = toCustomMultipartFile(fileCreationDto.getFile());
 
         checkFile(file);
 
-        final Folder folderForFile = folderService.getFolder(folderDtoMapperService.toDto(fileCreationDto), user, tempFolder);
+        FolderDto newFolderDto = folderDtoMapperService.toDto(fileCreationDto);
+        newFolderDto.setBucketName(tempBucketName);
+
+        final Folder folderForFile = folderService.getFolder(newFolderDto, user, tempFolder);
 
         FileInfoDto fileInfoDto = new FileInfoDto(file, folderForFile, fileCreationDto.getFileDescription());
         fileInfoDto.setIsOriginalFile(true);
+        fileInfoDto.setBucketName(tempBucketName);
         final FileInfo fileInfo = fileInfoService.createFileInfo(fileInfoDto);
 
         dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
@@ -90,17 +103,17 @@ public class FileServiceImpl implements FileService {
 
         filesInfos.addAll(imgFilesInfos);
 
-        return getFileResponseDtoByFileInfos(filesInfos);
+        return getFileResponseDtoByFileInfos(filesInfos, tempBucketName);
     }
 
-    private FileResponseDto getFileResponseDtoByFileInfos(List<FileInfo> fileInfos) {
+    private FileResponseDto getFileResponseDtoByFileInfos(List<FileInfo> fileInfos, String bucketName) {
         Map<String, String> paths = new HashMap<>();
         fileInfos.forEach(fi -> {
             String key = fi.getIsOriginalFile() ? ORIGINAL_FILE_KEY : fi.getDescription();
             String value = fi.getPath();
             paths.put(key, value);
         });
-        Map<String, String> links = getTempFileLinks(paths);
+        Map<String, String> links = getTempFileLinks(paths, bucketName);
         long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
         return FileResponseDto.builder()
                 .linksToFiles(links)
@@ -109,7 +122,8 @@ public class FileServiceImpl implements FileService {
                 .build();
     }
 
-    private List<FileInfo> createImagesForFile(
+    @Transactional
+    protected List<FileInfo> createImagesForFile(
             MultipartFile file,
             String folderPath,
             String fileUUID) {
@@ -133,6 +147,7 @@ public class FileServiceImpl implements FileService {
                 String imgFilePath = dataStorageService.uploadFIle(dto, filePath.toString()).object();
 
                 FileInfoDto fileInfoDto = new FileInfoDto(value, folder, imgFilePath, key);
+                fileInfoDto.setBucketName(tempBucketName);
                 fileInfoDtoList.add(fileInfoDto);
             });
             return fileInfoService.createFileInfo(fileInfoDtoList);
@@ -142,7 +157,6 @@ public class FileServiceImpl implements FileService {
     }
 
     private List<FileInfo> getEmptyFilesInfos() {
-
         return IMAGE_SIZES.stream().map(s ->
                 FileInfo.builder()
                         .isOriginalFile(false)
@@ -152,10 +166,10 @@ public class FileServiceImpl implements FileService {
         ).collect(Collectors.toList());
     }
 
-    private Map<String, String> getTempFileLinks(Map<String, String> paths) {
+    private Map<String, String> getTempFileLinks(Map<String, String> paths, String tempBucketName) {
         Map<String, String> links = new HashMap<>();
         paths.forEach((key, value) ->
-                links.put(key, dataStorageService.getTempLink(value))
+                links.put(key, dataStorageService.getTempLink(value, tempBucketName ))
         );
         return links;
     }
@@ -176,6 +190,9 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public FileResponseDto saveTemporaryFile(FileDto dto, User user) {
 
+        dataStorageService.setBucketName(tempBucketName);
+        dataStorageService.setNewBucketName(bucketName);
+
         String tempFilePath = dto.getFilePath();
         String folderPath = getFolderPathByFilePath(tempFilePath);
         Folder folder = folderService.getFolderByPath(folderPath);
@@ -192,7 +209,7 @@ public class FileServiceImpl implements FileService {
         dataStorageService.deleteObject(folder.getPath());
         folder.setPath(newFolderPath);
 
-        return getFileResponseDtoByFileInfos(updatedFileInfo);
+        return getFileResponseDtoByFileInfos(updatedFileInfo, bucketName);
     }
 
     private List<FileInfo> remoteFilesInBucket(List<FileInfo> filesInfo) {
