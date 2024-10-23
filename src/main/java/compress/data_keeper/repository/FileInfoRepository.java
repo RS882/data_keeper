@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface FileInfoRepository extends JpaRepository<FileInfo, UUID> {
 
     List<FileInfo> findByFolderId(UUID folderId);
+
+    void deleteAllByFolderId(UUID folderId);
 }

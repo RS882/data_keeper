@@ -68,12 +68,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ResponseMessageDto> handleException(RuntimeException e) {
-        log.error("RuntimeException occurred", e);
-        return new ResponseEntity<>(new ResponseMessageDto("Something went wrong"), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorsDto> handleValidationException(MethodArgumentNotValidException e) {
         List<ValidationErrorDto> validationErrors = new ArrayList<>();
@@ -95,5 +89,11 @@ public class GlobalExceptionHandler {
                 .body(ValidationErrorsDto.builder()
                         .errors(validationErrors)
                         .build());
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ResponseMessageDto> handleException(RuntimeException e) {
+        log.error("RuntimeException occurred", e);
+        return new ResponseEntity<>(new ResponseMessageDto("Something went wrong"), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

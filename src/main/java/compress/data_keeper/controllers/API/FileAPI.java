@@ -5,9 +5,11 @@ import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.entity.User;
+import compress.data_keeper.exception_handler.dto.ValidationErrorsDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,6 +43,27 @@ public interface FileAPI {
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
+            @ApiResponse(responseCode = "400", description = "Request is wrong",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(
+                                    oneOf = {
+                                            ValidationErrorsDto.class
+                                    }
+                            ),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "Validation Errors",
+                                            value = "{\n" +
+                                                    "  \"errors\": [\n" +
+                                                    "    {\n" +
+                                                    "      \"field\": \"FileCreationDto.file\",\n" +
+                                                    "      \"message\": \"File cannot be null\",\n" +
+                                                    "      \"rejectedValue\": \"rt\"\n" +
+                                                    "    }\n" +
+                                                    "  ]\n" +
+                                                    "}"
+                                    )
+                            })),
             @ApiResponse(responseCode = "404",
                     description = "Bad request",
                     content = @Content(
@@ -79,6 +102,32 @@ public interface FileAPI {
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
+            @ApiResponse(responseCode = "400", description = "Request is wrong",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(
+                                    oneOf = {
+                                            ValidationErrorsDto.class,
+                                            ResponseMessageDto.class
+                                    }
+                            ),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "Validation Errors",
+                                            value = "{\n" +
+                                                    "  \"errors\": [\n" +
+                                                    "    {\n" +
+                                                    "      \"field\": \"FileDto.filePath\",\n" +
+                                                    "      \"message\": \"Path cannot be empty or blank\",\n" +
+                                                    "      \"rejectedValue\": \"rt\"\n" +
+                                                    "    }\n" +
+                                                    "  ]\n" +
+                                                    "}"
+                                    ),
+                                    @ExampleObject(
+                                            name = "File is empty",
+                                            value = "{\"message\": \"File is empty\"}"
+                                    )
+                            })),
             @ApiResponse(responseCode = "404",
                     description = "Bad request",
                     content = @Content(

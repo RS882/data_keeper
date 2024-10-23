@@ -4,6 +4,7 @@ import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import io.minio.*;
+import io.minio.errors.*;
 import io.minio.http.Method;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
@@ -15,12 +16,16 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
 import static compress.data_keeper.constants.FileMetaDataConstants.*;
@@ -125,15 +130,23 @@ public class DataStorageServiceImpl implements DataStorageService {
         }
     }
 
-    @Override
-    public void checkAndCreateBucket(String checkedBucketName, boolean isObjectLock) {
+    private boolean checkBucket(String bucketName) {
         try {
-            boolean found = minioClient
+            return minioClient
                     .bucketExists(
                             BucketExistsArgs
                                     .builder()
-                                    .bucket(checkedBucketName)
+                                    .bucket(bucketName)
                                     .build());
+        } catch (Exception e) {
+            throw new ServerIOException(e.getMessage());
+        }
+    }
+
+    @Override
+    public void checkAndCreateBucket(String checkedBucketName, boolean isObjectLock) {
+        try {
+            boolean found = checkBucket(checkedBucketName);
             if (!found) {
                 minioClient.makeBucket(
                         MakeBucketArgs
@@ -163,7 +176,7 @@ public class DataStorageServiceImpl implements DataStorageService {
         if (path == null) {
             return null;
         }
-        Map<String, String> queryParams = getQueryParamsForFile(path,bucketName);
+        Map<String, String> queryParams = getQueryParamsForFile(path, bucketName);
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs
@@ -185,7 +198,7 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     private Map<String, String> getQueryParamsForFile(String path, String bucketName) {
         Map<String, String> queryParams = new HashMap<>();
-        String originalFileName = getFileUserMetaData(path,bucketName).get(ORIGINAL_FILENAME.toLowerCase());
+        String originalFileName = getFileUserMetaData(path, bucketName).get(ORIGINAL_FILENAME.toLowerCase());
         if (originalFileName != null || !originalFileName.isBlank()) {
             queryParams.put(RESPONSE_CONTENT_DISPOSITION, ATTACHMENT_FILENAME + originalFileName);
         }
@@ -285,7 +298,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
-    public boolean isObjectExist(String objectPath) {
+    public boolean isObjectExist(String objectPath,String bucketName) {
         try {
             minioClient.statObject(
                     StatObjectArgs.builder()
@@ -334,6 +347,22 @@ public class DataStorageServiceImpl implements DataStorageService {
         } catch (Exception e) {
             throw new ServerIOException(e.getMessage());
         }
+    }
+
+    @Override
+    public void clearAndDeleteBucket(String bucketName) {
+       if(!checkBucket(bucketName)) return;
+        Iterable<Result<Item>> objects = getAllObjectFromBucket(bucketName);
+        List<String> objectsToDelete = StreamSupport.stream(objects.spliterator(), false)
+                .map(result -> {
+                    try {
+                        return result.get().objectName();
+                    } catch (Exception e) {
+                        throw new ServerIOException(e.getMessage());
+                    }
+                }).toList();
+        deleteObjectsFromBucket(bucketName, objectsToDelete);
+        deleteBucket(bucketName);
     }
 
     @Override

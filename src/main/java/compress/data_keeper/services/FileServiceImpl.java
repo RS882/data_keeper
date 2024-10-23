@@ -9,10 +9,8 @@ import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
-import compress.data_keeper.exception_handler.forbidden.exceptions.UserDoesntHaveRightException;
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
-import compress.data_keeper.security.contstants.Role;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FileInfoService;
@@ -42,6 +40,7 @@ import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 import static compress.data_keeper.domain.CustomMultipartFile.toCustomMultipartFile;
 import static compress.data_keeper.services.utilities.FileActionUtilities.getFileActionServiceByContentType;
 import static compress.data_keeper.services.utilities.FileUtilities.*;
+import static compress.data_keeper.services.utilities.UserRightUtilities.checkUserRights;
 
 @Service
 @RequiredArgsConstructor
@@ -115,10 +114,15 @@ public class FileServiceImpl implements FileService {
         });
         Map<String, String> links = getTempFileLinks(paths, bucketName);
         long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
+
+        Map<String, String> filteredPaths = paths.entrySet().stream()
+                .filter(entry -> entry.getKey().equals(ORIGINAL_FILE_KEY))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
         return FileResponseDto.builder()
                 .linksToFiles(links)
                 .linksIsValidForMs(linkLifeTimeDuration)
-                .paths(paths)
+                .paths(filteredPaths)
                 .build();
     }
 
@@ -169,7 +173,7 @@ public class FileServiceImpl implements FileService {
     private Map<String, String> getTempFileLinks(Map<String, String> paths, String tempBucketName) {
         Map<String, String> links = new HashMap<>();
         paths.forEach((key, value) ->
-                links.put(key, dataStorageService.getTempLink(value, tempBucketName ))
+                links.put(key, dataStorageService.getTempLink(value, tempBucketName))
         );
         return links;
     }
@@ -225,14 +229,5 @@ public class FileServiceImpl implements FileService {
         String normalizedTempFilePath = toUnixStylePath(tempFilePath);
         String basePath = normalizedTempFilePath.substring(normalizedTempFilePath.indexOf("/"));
         return dirPrefix + basePath;
-    }
-
-    private void checkUserRights(Folder folder, User user) {
-        if (user.getRole().equals(Role.ROLE_ADMIN)) {
-            return;
-        }
-        if (!folder.getOwner().equals(user)) {
-            throw new UserDoesntHaveRightException(user.getEmail());
-        }
     }
 }

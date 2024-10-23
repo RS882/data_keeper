@@ -48,7 +48,6 @@ public class FileInfoServiceImpl implements FileInfoService {
                 fi.setPath(toUnixStylePath(outputFilePath.toString()));
             }
         });
-
         return createdFileInfos;
     }
 
@@ -56,6 +55,11 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Transactional
     public List<FileInfo> getFileInfoByFolderId(UUID folderId) {
         return fileInfoRepository.findByFolderId(folderId);
+    }
+
+    @Override
+    public void deleteAllFileInfosByFolderId(UUID folderId) {
+        fileInfoRepository.deleteAllByFolderId(folderId);
     }
 
     @Override
