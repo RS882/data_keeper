@@ -136,7 +136,7 @@ public class FileServiceImpl implements FileService {
 
         final FileActionService fileActionService = getFileActionService(file);
 
-        final Folder folder = folderService.getFolderByPath(folderPath);
+        final Folder folder = folderService.getFolderByFolderPath(folderPath);
 
         List<FileInfoDto> fileInfoDtoList = new ArrayList<>();
 
@@ -199,7 +199,7 @@ public class FileServiceImpl implements FileService {
 
         String tempFilePath = dto.getFilePath();
         String folderPath = getFolderPathByFilePath(tempFilePath);
-        Folder folder = folderService.getFolderByPath(folderPath);
+        Folder folder = folderService.getFolderByFolderPath(folderPath);
 
         checkUserRights(folder, user);
 

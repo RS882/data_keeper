@@ -36,7 +36,7 @@ public class FolderServiceImpl implements FolderService {
         } else {
             String folderPath = dto.getPath();
             if (folderPath != null && !folderPath.isBlank()) {
-                return getFolderByPath(folderPath);
+                return getFolderByFolderPath(folderPath);
             } else {
                 return createFolder(dto, user);
             }
@@ -45,9 +45,9 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     @Transactional
-    public Folder getFolderByPath(String path) {
-        return folderRepository.findByPath(toUnixStylePath(path))
-                .orElseThrow(() -> new FolderNotFoundException(path));
+    public Folder getFolderByFolderPath(String folderPath) {
+        return folderRepository.findByPath(toUnixStylePath(folderPath))
+                .orElseThrow(() -> new FolderNotFoundException(folderPath));
     }
 
     private Folder createFolder(User user) {

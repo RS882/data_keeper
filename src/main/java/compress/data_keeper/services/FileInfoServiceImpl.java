@@ -61,9 +61,4 @@ public class FileInfoServiceImpl implements FileInfoService {
     public void deleteAllFileInfosByFolderId(UUID folderId) {
         fileInfoRepository.deleteAllByFolderId(folderId);
     }
-
-    @Override
-    public List<FileInfo> updateFileInfos(List<FileInfo> fileInfos) {
-        return fileInfoRepository.saveAll(fileInfos);
-    }
 }

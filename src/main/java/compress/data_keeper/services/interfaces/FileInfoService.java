@@ -14,6 +14,4 @@ public interface FileInfoService {
     List<FileInfo> getFileInfoByFolderId(UUID folderId);
 
     void deleteAllFileInfosByFolderId(UUID folderId);
-
-    List<FileInfo> updateFileInfos(List<FileInfo> fileInfos);
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
+import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.repository.UserRepository;
 import compress.data_keeper.security.domain.dto.LoginDto;
@@ -178,8 +179,6 @@ class FileControllerTest {
         assertNotNull(originalFilePath);
         assertInstanceOf(String.class, originalFilePath);
         assertTrue(dataStorageService.isObjectExist(originalFilePath, bucketName));
-        String savedFolderPath = getFolderPathByFilePath(originalFilePath);
-        uploadedObjectPath.add(savedFolderPath);
     }
 
     private void checkImageFilePathIfPathExists(FileResponseDto responseDto) {
@@ -202,8 +201,25 @@ class FileControllerTest {
         sizes.forEach(s -> {
             String linkValue = responseDto.getLinksToFiles().get(s);
             assertNull(linkValue);
-
         });
+    }
+
+    private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
+
+        String filePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
+        String folderPath =getFolderPathByFilePath(filePath);
+        Folder folder = folderService.getFolderByFolderPath(folderPath);
+        assertNotNull(folder);
+        assertEquals(folder.getOwner().getId(),currentUserId1);
+        assertEquals(folder.getBucketName(),bucketName);
+
+        List<FileInfo> filesInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+        assertNotNull(filesInfos);
+        filesInfos.forEach(f->{
+            assertNotNull(f);
+            assertEquals(f.getBucketName(),bucketName);
+        });
+
     }
 
     @Nested
@@ -244,6 +260,7 @@ class FileControllerTest {
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
             checkResponse(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
         }
 
         @Test
@@ -272,6 +289,7 @@ class FileControllerTest {
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
             checkResponse(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
         }
 
         @Test
@@ -337,6 +355,7 @@ class FileControllerTest {
             FileResponseDto responseDto2 = mapper.readValue(jsonResponse2, FileResponseDto.class);
 
             checkResponse(responseDto2, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto2, tempBucketName);
         }
 
         @Test
@@ -377,8 +396,10 @@ class FileControllerTest {
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
             checkOriginalFilePath(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
 
             checkImageFilePathIfPathNotExists(responseDto);
+
         }
 
         @Test
@@ -526,6 +547,7 @@ class FileControllerTest {
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
             checkResponse(responseDto, bucketName);
+            checkFileAndFolderInfoDBData(responseDto, bucketName);
         }
 
         @Test
@@ -570,7 +592,7 @@ class FileControllerTest {
                             .build());
 
             String folderPath = getFolderPathByFilePath(originalFilePath);
-            Folder folder = folderService.getFolderByPath(folderPath);
+            Folder folder = folderService.getFolderByFolderPath(folderPath);
             fileInfoService.deleteAllFileInfosByFolderId(folder.getId());
 
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)

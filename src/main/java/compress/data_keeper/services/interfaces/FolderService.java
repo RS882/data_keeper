@@ -8,5 +8,5 @@ public interface FolderService {
 
     Folder getFolder(FolderDto dto, User user, String dirPrefix);
 
-    Folder getFolderByPath(String path);
+    Folder getFolderByFolderPath(String path);
 }
