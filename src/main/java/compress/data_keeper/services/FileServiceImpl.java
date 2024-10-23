@@ -212,6 +212,7 @@ public class FileServiceImpl implements FileService {
         String newFolderPath = getNewPath(folder.getPath());
         dataStorageService.deleteObject(folder.getPath());
         folder.setPath(newFolderPath);
+        folder.setBucketName(bucketName);
 
         return getFileResponseDtoByFileInfos(updatedFileInfo, bucketName);
     }
@@ -221,6 +222,7 @@ public class FileServiceImpl implements FileService {
             String newFilePath = getNewPath(fi.getPath());
             dataStorageService.moveFile(fi.getPath(), newFilePath);
             fi.setPath(newFilePath);
+            fi.setBucketName(bucketName);
             return fi;
         }).toList();
     }

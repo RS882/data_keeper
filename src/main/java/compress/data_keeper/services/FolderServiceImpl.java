@@ -85,6 +85,4 @@ public class FolderServiceImpl implements FolderService {
         savedFolder.setPath(folderPath);
         return savedFolder;
     }
-
-
 }
