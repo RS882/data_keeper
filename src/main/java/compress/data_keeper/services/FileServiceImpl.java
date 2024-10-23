@@ -9,6 +9,7 @@ import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
+import compress.data_keeper.exception_handler.bad_requeat.exceptions.BadFileBucketName;
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
@@ -28,10 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static compress.data_keeper.configs.MinioStorageConfig.timeUnitForTempLink;
@@ -115,14 +113,16 @@ public class FileServiceImpl implements FileService {
         Map<String, String> links = getTempFileLinks(paths, bucketName);
         long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
 
-        Map<String, String> filteredPaths = paths.entrySet().stream()
-                .filter(entry -> entry.getKey().equals(ORIGINAL_FILE_KEY))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        UUID originalFileId = fileInfos.stream()
+                .filter(FileInfo::getIsOriginalFile)
+                .findFirst()
+                .map(FileInfo::getId)
+                .orElse(null);
 
         return FileResponseDto.builder()
                 .linksToFiles(links)
                 .linksIsValidForMs(linkLifeTimeDuration)
-                .paths(filteredPaths)
+                .fileId(originalFileId)
                 .build();
     }
 
@@ -197,7 +197,18 @@ public class FileServiceImpl implements FileService {
         dataStorageService.setBucketName(tempBucketName);
         dataStorageService.setNewBucketName(bucketName);
 
-        String tempFilePath = dto.getFilePath();
+        UUID originalFileId = dto.getFileId();
+
+        FileInfo tempFileInfo = fileInfoService.findOriginalFileInfoById(originalFileId);
+
+        if (!tempFileInfo.getBucketName().equals(tempBucketName)) {
+            throw new BadFileBucketName(
+                    String.format("File with id <%s> isn't in the temporary bucket",
+                            originalFileId)
+            );
+        }
+
+        String tempFilePath = tempFileInfo.getPath();
         String folderPath = getFolderPathByFilePath(tempFilePath);
         Folder folder = folderService.getFolderByFolderPath(folderPath);
 

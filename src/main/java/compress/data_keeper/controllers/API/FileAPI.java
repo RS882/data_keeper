@@ -65,7 +65,7 @@ public interface FileAPI {
                                     )
                             })),
             @ApiResponse(responseCode = "404",
-                    description = "Bad request",
+                    description = "Not found",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
@@ -129,7 +129,7 @@ public interface FileAPI {
                                     )
                             })),
             @ApiResponse(responseCode = "404",
-                    description = "Bad request",
+                    description = "Not found",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
@@ -150,7 +150,6 @@ public interface FileAPI {
             @AuthenticationPrincipal
             @Parameter(hidden = true) User currentUser
     );
-
 
 
 }

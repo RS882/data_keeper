@@ -11,7 +11,11 @@ public interface FileInfoService {
 
     List<FileInfo> createFileInfo(List<FileInfoDto> dtos);
 
+    FileInfo findOriginalFileInfoById(UUID id);
+
     List<FileInfo> getFileInfoByFolderId(UUID folderId);
 
     void deleteAllFileInfosByFolderId(UUID folderId);
+
+    FileInfo changeBucketName(UUID fileId, String newBucketName);
 }

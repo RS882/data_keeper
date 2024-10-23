@@ -2,6 +2,7 @@ package compress.data_keeper.services;
 
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.entity.FileInfo;
+import compress.data_keeper.exception_handler.not_found.exceptions.FileInfoNotFound;
 import compress.data_keeper.repository.FileInfoRepository;
 import compress.data_keeper.services.interfaces.FileInfoService;
 import compress.data_keeper.services.mapping.FileInfoMapperService;
@@ -52,6 +53,12 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     @Override
+    public FileInfo findOriginalFileInfoById(UUID id) {
+        return fileInfoRepository.findByIdAndIsOriginalFileTrue(id)
+                .orElseThrow(() -> new FileInfoNotFound(id));
+    }
+
+    @Override
     @Transactional
     public List<FileInfo> getFileInfoByFolderId(UUID folderId) {
         return fileInfoRepository.findByFolderId(folderId);
@@ -61,4 +68,13 @@ public class FileInfoServiceImpl implements FileInfoService {
     public void deleteAllFileInfosByFolderId(UUID folderId) {
         fileInfoRepository.deleteAllByFolderId(folderId);
     }
+
+    @Override
+    @Transactional
+    public FileInfo changeBucketName(UUID fileId, String newBucketName) {
+        FileInfo fileInfo = findOriginalFileInfoById(fileId);
+        fileInfo.setBucketName(newBucketName);
+        return fileInfo;
+    }
+
 }

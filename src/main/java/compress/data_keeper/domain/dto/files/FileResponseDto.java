@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -25,22 +26,17 @@ public class FileResponseDto {
     @Schema(description = "The length of time the link will be active in milliseconds", example = "1234599200")
     private long linksIsValidForMs;
 
-    @Schema(description = "Paths of file from bucket",
-            example = """
-                    {
-                        "originalFile": http://bucket/isiisi/23/file.txt,
-                        "320x320": http://bucket/isiisi/23/file.jpg
-                    }
-                    """)
-    private Map<String, String> paths;
+    @Schema(description = "FIle ID",
+            example = "c7593273-6287-4a37-ad27-f8f07f9a36f1")
+    private UUID fileId;
 
     @JsonCreator
     public FileResponseDto(
             @JsonProperty("linksToFiles") Map<String, String> linksToFiles,
             @JsonProperty("linksIsValidForMs") long linksIsValidForMs,
-            @JsonProperty("paths") Map<String, String> paths) {
+            @JsonProperty("fileId") UUID fileId) {
         this.linksToFiles = linksToFiles;
         this.linksIsValidForMs = linksIsValidForMs;
-        this.paths = paths;
+        this.fileId = fileId;
     }
 }

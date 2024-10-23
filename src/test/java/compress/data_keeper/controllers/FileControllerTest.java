@@ -17,9 +17,6 @@ import compress.data_keeper.services.interfaces.FolderService;
 import compress.data_keeper.services.mapping.UserMapperService;
 import compress.data_keeper.services.utilities.FileUtilities;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,13 +31,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.services.interfaces.FileService.ORIGINAL_FILE_KEY;
 import static compress.data_keeper.services.utilities.FileUtilities.getFolderPathByFilePath;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.isA;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -214,9 +209,10 @@ class FileControllerTest {
         assertNotNull(originalFileLink);
         assertInstanceOf(String.class, originalFileLink);
 
-        String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-        assertNotNull(originalFilePath);
-        assertInstanceOf(String.class, originalFilePath);
+        UUID originalFileId = responseDto.getFileId();
+        assertNotNull(originalFileId);
+
+        String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
         assertTrue(dataStorageService.isObjectExist(originalFilePath, bucketName));
     }
 
@@ -245,8 +241,10 @@ class FileControllerTest {
 
     private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
 
-        String filePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-        String folderPath = getFolderPathByFilePath(filePath);
+        UUID originalFileId = responseDto.getFileId();
+        String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
+
+        String folderPath = getFolderPathByFilePath(originalFilePath);
         Folder folder = folderService.getFolderByFolderPath(folderPath);
         assertNotNull(folder);
         assertEquals(folder.getOwner().getId(), currentUserId1);
@@ -291,7 +289,8 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
                     .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
                     .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.paths").isMap())
+                    .andExpect(jsonPath("$.fileId",
+                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
@@ -320,7 +319,8 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
                     .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
                     .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.paths").isMap())
+                    .andExpect(jsonPath("$.fileId",
+                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
@@ -359,7 +359,8 @@ class FileControllerTest {
 
             String jsonResponse = result.getResponse().getContentAsString();
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
-            String originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
+            UUID originalFileId = responseDto.getFileId();
+            String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
             String pathFolder = originalFilePath.substring(0, originalFilePath.lastIndexOf("/")).trim();
 
             MockMultipartFile mockFile2 = new MockMultipartFile(
@@ -386,7 +387,8 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
                     .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
                     .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.paths").isMap())
+                    .andExpect(jsonPath("$.fileId",
+                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse2 = result2.getResponse().getContentAsString();
@@ -427,7 +429,8 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
                     .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
                     .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.paths").isMap())
+                    .andExpect(jsonPath("$.fileId",
+                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
@@ -470,7 +473,7 @@ class FileControllerTest {
         }
 
         @Test
-        public void create_file_temp_status_404_when_folder_path_is_wrong() throws Exception {
+        public void create_file_temp_status_404_when_folder_path_is_not_found() throws Exception {
 
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
@@ -530,7 +533,7 @@ class FileControllerTest {
     @DisplayName("PATCH /v1/file/save")
     class SaveTempFileInBucket {
 
-        private String originalFilePath;
+        private UUID originalFileId;
 
         @BeforeEach
         void setUp() throws Exception {
@@ -559,14 +562,14 @@ class FileControllerTest {
             String jsonResponse = result.getResponse().getContentAsString();
 
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
-            originalFilePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
+            originalFileId = responseDto.getFileId();
         }
 
         @Test
         public void save_temp_files_with_status_200() throws Exception {
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
-                            .filePath(originalFilePath)
+                            .fileId(originalFileId)
                             .build());
 
             MvcResult result = mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
@@ -578,7 +581,8 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
                     .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
                     .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.paths").isMap())
+                    .andExpect(jsonPath("$.fileId",
+                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
@@ -593,9 +597,8 @@ class FileControllerTest {
         public void save_temp_files_with_status_200_when_user_is_admin() throws Exception {
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
-                            .filePath(originalFilePath)
+                            .fileId(originalFileId)
                             .build());
-
             loginAdmin();
 
             MvcResult result = mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
@@ -607,7 +610,8 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
                     .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
                     .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.paths").isMap())
+                    .andExpect(jsonPath("$.fileId",
+                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
@@ -619,10 +623,36 @@ class FileControllerTest {
         }
 
         @Test
-        public void save_temp_files_with_status_404_when_file_path_is_wrong() throws Exception {
+        public void save_temp_files_with_status_404_when_original_file_is_not_found() throws Exception {
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
-                            .filePath("Test/path")
+                            .fileId(UUID.randomUUID())
+                            .build());
+
+            mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
+        public void save_temp_files_with_status_404_when_file_id_is_not_original_file_id() throws Exception {
+
+            Folder folder = fileInfoService.findOriginalFileInfoById(originalFileId).getFolder();
+            List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+            UUID someFileId = fileInfos.stream()
+                    .filter(f -> !f.getIsOriginalFile())
+                    .findFirst()
+                    .map(FileInfo::getId)
+                    .orElseThrow(Exception::new);
+
+            String jsonDto = mapper.writeValueAsString(
+                    FileDto.builder()
+                            .fileId(someFileId)
                             .build());
 
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
@@ -637,11 +667,12 @@ class FileControllerTest {
 
         @Test
         public void save_temp_files_with_status_403_when_user_dont_have_right() throws Exception {
-            loginUser2();
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
-                            .filePath(originalFilePath)
+                            .fileId(originalFileId)
                             .build());
+            loginUser2();
+
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonDto)
@@ -653,12 +684,13 @@ class FileControllerTest {
         }
 
         @Test
-        public void save_temp_files_with_status_404_when_folder_is_empty() throws Exception {
+        public void save_temp_files_with_status_404_when_file_in_folder_not_found() throws Exception {
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
-                            .filePath(originalFilePath)
+                            .fileId(originalFileId)
                             .build());
 
+            String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
             String folderPath = getFolderPathByFilePath(originalFilePath);
             Folder folder = folderService.getFolderByFolderPath(folderPath);
             fileInfoService.deleteAllFileInfosByFolderId(folder.getId());
@@ -674,10 +706,29 @@ class FileControllerTest {
         }
 
         @Test
+        public void save_temp_files_with_status_400_when_file_is_not_in_temp_bucket() throws Exception {
+
+            fileInfoService.changeBucketName(originalFileId, "testbucketname");
+            String jsonDto = mapper.writeValueAsString(
+                    FileDto.builder()
+                            .fileId(originalFileId)
+                            .build());
+
+            mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
         public void save_temp_files_with_status_401_when_user_is_unauthorized() throws Exception {
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
-                            .filePath(originalFilePath)
+                            .fileId(originalFileId)
                             .build());
 
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
@@ -690,10 +741,11 @@ class FileControllerTest {
                     .andExpect(jsonPath("$.message", isA(String.class)));
         }
 
-        @ParameterizedTest(name = "Тест {index}: save_temp_files_with_status_400_when_path_is_incorrect [{arguments}]")
-        @MethodSource("incorrectFilePaths")
-        public void save_temp_files_with_status_400_when_path_is_incorrect(FileDto dto) throws Exception {
-            String jsonDto = mapper.writeValueAsString(dto);
+        @Test
+        public void save_temp_files_with_status_400_when_id_is_incorrect() throws Exception {
+            String jsonDto = mapper.writeValueAsString(
+                    FileDto.builder()
+                            .build());
 
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -701,21 +753,6 @@ class FileControllerTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors").isArray());
-        }
-
-        private static Stream<Arguments> incorrectFilePaths() {
-            return Stream.of(Arguments.of(
-                            FileDto.builder()
-                                    .build()),
-                    Arguments.of(
-                            FileDto.builder()
-                                    .filePath("")
-                                    .build()),
-                    Arguments.of(
-                            FileDto.builder()
-                                    .filePath("       ")
-                                    .build())
-            );
         }
     }
 }
