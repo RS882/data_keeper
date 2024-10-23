@@ -6,7 +6,9 @@ import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
+import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.repository.UserRepository;
+import compress.data_keeper.security.contstants.Role;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
 import compress.data_keeper.services.interfaces.DataStorageService;
@@ -84,6 +86,9 @@ class FileControllerTest {
     private String accessToken2;
     private Long currentUserId2;
 
+    private String adminAccessToken;
+    private Long currentAdminId;
+
     private List<String> uploadedObjectPath = new ArrayList<>();
 
     private static final String USER1_EMAIL = "Test1" + "@example.com";
@@ -93,6 +98,10 @@ class FileControllerTest {
     private static final String USER2_EMAIL = "Test2" + "@example.com";
     private static final String USER2_PASSWORD = "Querty123!";
     private static final String TEST_USER_NAME_2 = "TestName2";
+
+    private static final String ADMIN_EMAIL = "Admin" + "@example.com";
+    private static final String ADMIN_PASSWORD = "Querty123!";
+    private static final String TEST_ADMIN_NAME = "Admin TestName";
 
     private static final String FILE_TEMP_LOAD_PATH = "/v1/file/temp";
     private static final String SAVE_TEMP_FILE_PATH = "/v1/file/save";
@@ -138,6 +147,7 @@ class FileControllerTest {
         currentUserId1 = responseDto1.getUserId();
     }
 
+
     private void loginUser2() throws Exception {
         UserRegistrationDto dto2 = UserRegistrationDto
                 .builder()
@@ -163,6 +173,35 @@ class FileControllerTest {
         TokenResponseDto responseDto2 = mapper.readValue(jsonResponse2, TokenResponseDto.class);
         accessToken2 = responseDto2.getAccessToken();
         currentUserId2 = responseDto2.getUserId();
+    }
+
+    @Transactional
+    protected void loginAdmin() throws Exception {
+        UserRegistrationDto dto = UserRegistrationDto
+                .builder()
+                .email(ADMIN_EMAIL)
+                .userName(TEST_ADMIN_NAME)
+                .password(ADMIN_PASSWORD)
+                .build();
+
+        User admin = userRepository.save(mapperService.toEntity(dto));
+        admin.setRole(Role.ROLE_ADMIN);
+
+        String dtoJson = mapper.writeValueAsString(
+                LoginDto.builder()
+                        .email(ADMIN_EMAIL)
+                        .password(ADMIN_PASSWORD)
+                        .build());
+        MvcResult result = mockMvc.perform(post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dtoJson))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String jsonResponse = result.getResponse().getContentAsString();
+        TokenResponseDto responseDto = mapper.readValue(jsonResponse, TokenResponseDto.class);
+        adminAccessToken = responseDto.getAccessToken();
+        currentAdminId = responseDto.getUserId();
     }
 
     private void checkResponse(FileResponseDto responseDto, String bucketName) {
@@ -207,17 +246,17 @@ class FileControllerTest {
     private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
 
         String filePath = responseDto.getPaths().get(ORIGINAL_FILE_KEY);
-        String folderPath =getFolderPathByFilePath(filePath);
+        String folderPath = getFolderPathByFilePath(filePath);
         Folder folder = folderService.getFolderByFolderPath(folderPath);
         assertNotNull(folder);
-        assertEquals(folder.getOwner().getId(),currentUserId1);
-        assertEquals(folder.getBucketName(),bucketName);
+        assertEquals(folder.getOwner().getId(), currentUserId1);
+        assertEquals(folder.getBucketName(), bucketName);
 
         List<FileInfo> filesInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
         assertNotNull(filesInfos);
-        filesInfos.forEach(f->{
+        filesInfos.forEach(f -> {
             assertNotNull(f);
-            assertEquals(f.getBucketName(),bucketName);
+            assertEquals(f.getBucketName(), bucketName);
         });
 
     }
@@ -534,6 +573,35 @@ class FileControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonDto)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
+                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
+                    .andExpect(jsonPath("$.linksToFiles").isMap())
+                    .andExpect(jsonPath("$.paths").isMap())
+                    .andReturn();
+
+            String jsonResponse = result.getResponse().getContentAsString();
+
+            FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
+
+            checkResponse(responseDto, bucketName);
+            checkFileAndFolderInfoDBData(responseDto, bucketName);
+        }
+
+        @Test
+        public void save_temp_files_with_status_200_when_user_is_admin() throws Exception {
+            String jsonDto = mapper.writeValueAsString(
+                    FileDto.builder()
+                            .filePath(originalFilePath)
+                            .build());
+
+            loginAdmin();
+
+            MvcResult result = mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))

@@ -151,8 +151,6 @@ public interface FileAPI {
             @Parameter(hidden = true) User currentUser
     );
 
-//    @DeleteMapping("/temp")
-//    void deleteTemporarilyFile();
-//
+
 
 }
