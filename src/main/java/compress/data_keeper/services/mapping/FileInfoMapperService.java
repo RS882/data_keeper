@@ -2,8 +2,7 @@ package compress.data_keeper.services.mapping;
 
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.entity.FileInfo;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
+import org.mapstruct.*;
 
 import static compress.data_keeper.services.utilities.FileCalculators.calculateHash;
 
@@ -18,7 +17,14 @@ public abstract class FileInfoMapperService {
     @Mapping(target = "bucketName", source = "bucketName")
     @Mapping(target = "type", source = "fileType")
     @Mapping(target = "hash", expression = "java(getHash(dto))")
+    public abstract FileInfo mapCommonFields(FileInfoDto dto);
+
+    @InheritConfiguration(name = "mapCommonFields")
     public abstract FileInfo toFileInfo(FileInfoDto dto);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @InheritConfiguration(name = "mapCommonFields")
+    public abstract void updateFileInfo(FileInfoDto dto, @MappingTarget FileInfo currentFileInfo);
 
     protected String getHash(FileInfoDto dto) {
         return calculateHash(dto.getInputStream());

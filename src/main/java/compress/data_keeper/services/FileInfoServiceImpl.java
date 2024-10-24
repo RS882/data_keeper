@@ -71,9 +71,9 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     @Override
     @Transactional
-    public FileInfo changeBucketName(UUID fileId, String newBucketName) {
+    public FileInfo updateFileInfo(UUID fileId, FileInfoDto dto) {
         FileInfo fileInfo = findOriginalFileInfoById(fileId);
-        fileInfo.setBucketName(newBucketName);
+        fileInfoMapperService.updateFileInfo(dto, fileInfo);
         return fileInfo;
     }
 

@@ -1,6 +1,7 @@
 package compress.data_keeper.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
@@ -708,7 +709,10 @@ class FileControllerTest {
         @Test
         public void save_temp_files_with_status_400_when_file_is_not_in_temp_bucket() throws Exception {
 
-            fileInfoService.changeBucketName(originalFileId, "testbucketname");
+            FileInfoDto fileInfoDto = new FileInfoDto();
+            fileInfoDto.setBucketName("testbucketname");
+
+           FileInfo fi = fileInfoService.updateFileInfo(originalFileId, fileInfoDto);
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
                             .fileId(originalFileId)

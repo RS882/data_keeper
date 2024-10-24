@@ -17,5 +17,5 @@ public interface FileInfoService {
 
     void deleteAllFileInfosByFolderId(UUID folderId);
 
-    FileInfo changeBucketName(UUID fileId, String newBucketName);
+    FileInfo updateFileInfo(UUID fileId, FileInfoDto dto);
 }

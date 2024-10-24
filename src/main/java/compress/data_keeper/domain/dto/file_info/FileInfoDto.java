@@ -10,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.UUID;
 
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 import static compress.data_keeper.services.utilities.FileCalculators.calculateFileSize;
@@ -19,7 +18,6 @@ import static compress.data_keeper.services.utilities.FileCalculators.calculateF
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileInfoDto {
-    private UUID fileId;
     private String bucketName;
     private String fileName;
     private String fileDescription;
