@@ -5,6 +5,7 @@ import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
 import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
@@ -17,15 +18,18 @@ import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FileInfoService;
 import compress.data_keeper.services.interfaces.FileService;
 import compress.data_keeper.services.interfaces.FolderService;
+import compress.data_keeper.services.mapping.FileInfoMapperService;
 import compress.data_keeper.services.mapping.FolderDtoMapperService;
 import lombok.RequiredArgsConstructor;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.data.domain.Pageable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -51,6 +55,8 @@ public class FileServiceImpl implements FileService {
     private final FileInfoService fileInfoService;
 
     private final FolderDtoMapperService folderDtoMapperService;
+
+    private final FileInfoMapperService fileInfoMapperService;
 
 
     @Value("${url-lifetime}")
@@ -226,6 +232,22 @@ public class FileServiceImpl implements FileService {
         folder.setBucketName(bucketName);
 
         return getFileResponseDtoByFileInfos(updatedFileInfo, bucketName);
+    }
+
+    @Override
+    public FileResponseDtoWithPagination findAllFiles(Pageable pageable) {
+        Page<FileInfo> filesInfos = fileInfoService.findAllFileInfo(pageable);
+        FileResponseDtoWithPagination responseDto =
+                fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
+
+        Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
+                .map(fi->{
+                    Folder folder = fi.getFolder();
+                    List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+                    return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());
+                }).collect(Collectors.toSet());
+        responseDto.setFiles(fileResponseDtoSet);
+        return responseDto;
     }
 
     private List<FileInfo> remoteFilesInBucket(List<FileInfo> filesInfo) {

@@ -7,6 +7,8 @@ import compress.data_keeper.repository.FileInfoRepository;
 import compress.data_keeper.services.interfaces.FileInfoService;
 import compress.data_keeper.services.mapping.FileInfoMapperService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,4 +79,8 @@ public class FileInfoServiceImpl implements FileInfoService {
         return fileInfo;
     }
 
+    @Override
+    public Page<FileInfo> findAllFileInfo(Pageable pageable) {
+        return fileInfoRepository.findAllByIsOriginalFileTrue(pageable);
+    }
 }

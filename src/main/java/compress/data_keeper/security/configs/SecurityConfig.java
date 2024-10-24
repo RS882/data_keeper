@@ -1,5 +1,6 @@
 package compress.data_keeper.security.configs;
 
+import compress.data_keeper.security.contstants.Role;
 import compress.data_keeper.security.filters.ValidationFilter;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -39,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.POST, "/v1/file/temp").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/v1/file/save").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/v1/file/all").hasRole("ADMIN")
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(validationFilter, UsernamePasswordAuthenticationFilter.class)
