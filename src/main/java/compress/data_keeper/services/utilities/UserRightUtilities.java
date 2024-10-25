@@ -15,4 +15,13 @@ public class UserRightUtilities {
             throw new UserDoesntHaveRightException(user.getEmail());
         }
     }
+
+    public static void checkUserRights(Long userId, User user) {
+        if (user.getRole().equals(Role.ROLE_ADMIN)) {
+            return;
+        }
+        if (!userId.equals(user.getId())) {
+            throw new UserDoesntHaveRightException(user.getEmail());
+        }
+    }
 }

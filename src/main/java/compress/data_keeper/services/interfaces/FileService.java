@@ -23,7 +23,7 @@ public interface FileService {
 
     FileResponseDtoWithPagination findAllFiles(Pageable pageable);
 
-    FileResponseDtoWithPagination findFilesByUserId(Long userId, Pageable pageable);
+    FileResponseDtoWithPagination findFilesByUserId(Long userId, User currentUser, Pageable pageable);
 
     FileInfo createFileInfo(FileInfoDto dto);
 

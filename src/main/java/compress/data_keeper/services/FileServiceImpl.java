@@ -249,7 +249,8 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public FileResponseDtoWithPagination findFilesByUserId(Long userId, Pageable pageable) {
+    public FileResponseDtoWithPagination findFilesByUserId(Long userId, User currentUser, Pageable pageable) {
+        checkUserRights(userId, currentUser);
         Page<FileInfo> filesInfos = fileInfoRepository.findOriginalFilesByUserId(userId, pageable);
         return getFileResponseDtoWithPagination(filesInfos);
     }

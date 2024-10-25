@@ -226,6 +226,9 @@ public interface FileAPI {
             @Parameter(description = "User ID. Minimum value is 1", example = "35")
             @Min(1)
             Long id,
+            @AuthenticationPrincipal
+            @Parameter(hidden = true)
+            User currentUser,
             @RequestParam(defaultValue = PAGE_VALUE)
             @Parameter(description = "Requested page number. ", example = "0")
             int page,

@@ -38,10 +38,10 @@ public class FileController implements FileAPI {
 
     @Override
     public ResponseEntity<FileResponseDtoWithPagination> getFilesLinksByUserId(
-            Long userId,
+            Long userId, User currentUser,
             int page, int size, String sortBy, Boolean isAsc) {
         return ResponseEntity.ok(fileService.findFilesByUserId(
-                userId,
+                userId,currentUser,
                 getPageable(page, size, sortBy, isAsc)));
     }
 }
