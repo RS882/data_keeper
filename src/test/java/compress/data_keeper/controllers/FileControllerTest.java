@@ -322,6 +322,28 @@ class FileControllerTest {
                 .andExpect(status().isOk());
     }
 
+    private int uploadAndMoveSomeFileForTest() throws Exception {
+        Random random = new Random();
+        int countOfFiles = random.nextInt(12) + 20;
+        return uploadAndMoveSomeFileForTest(countOfFiles);
+    }
+
+    private int uploadAndMoveSomeFileForTest(int countOfFiles) throws Exception {
+        Random random = new Random();
+        for (int i = 0; i < countOfFiles; i++) {
+            UUID fileId = uploadTextFile("testfile" + i + ".txt",
+                    i + "This is the content of the test file" + i,
+                    "Test file description" + i,
+                    "Test folder name" + i,
+                    "Test folder description" + i,
+                    "");
+            if (random.nextBoolean()) {
+                moveTempFileInBucket(fileId);
+            }
+        }
+        return countOfFiles;
+    }
+
     @Nested
     @DisplayName("POST /v1/file/temp")
     class FileTempUploadTests {
@@ -833,19 +855,7 @@ class FileControllerTest {
 
         @Test
         public void get_all_files_with_status_200() throws Exception {
-            Random random = new Random();
-            int countOfFiles = random.nextInt(12) + 20;
-            for (int i = 0; i < countOfFiles; i++) {
-                UUID fileId = uploadTextFile("testfile" + i + ".txt",
-                        i + "This is the content of the test file" + i,
-                        "Test file description" + i,
-                        "Test folder name" + i,
-                        "Test folder description" + i,
-                        "");
-                if (random.nextBoolean()) {
-                    moveTempFileInBucket(fileId);
-                }
-            }
+            int countOfFiles = uploadAndMoveSomeFileForTest();
 
             MvcResult result = mockMvc.perform(get(GET_ALL_FILES_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -862,6 +872,12 @@ class FileControllerTest {
                     .andReturn();
             String jsonResponse = result.getResponse().getContentAsString();
             FileResponseDtoWithPagination responseDto = mapper.readValue(jsonResponse, FileResponseDtoWithPagination.class);
+            responseDto.getFiles().forEach(
+                    f -> {
+                        FileInfo fileInfo = fileInfoService.findOriginalFileInfoById(f.getFileId());
+                        checkResponse(f, fileInfo.getBucketName());
+                    }
+            );
 
         }
     }

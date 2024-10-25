@@ -18,4 +18,6 @@ public interface FileInfoRepository extends JpaRepository<FileInfo, UUID> {
     Optional<FileInfo> findByIdAndIsOriginalFileTrue(UUID folderId);
 
     Page<FileInfo> findAllByIsOriginalFileTrue(Pageable pageable);
+
+
 }
