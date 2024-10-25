@@ -11,7 +11,7 @@ public class PaginationUtilities {
         try {
             Sort.Direction direction = isAsc ? Sort.Direction.ASC : Sort.Direction.DESC;
             return PageRequest.of(page, size, Sort.by(direction, sortBy));
-        } catch (IllegalArgumentException e) {
+        } catch (Exception e) {
             throw new PaginationParameterIsWrongException(page, size, sortBy);
         }
     }

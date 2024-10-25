@@ -19,6 +19,9 @@ import compress.data_keeper.services.interfaces.FolderService;
 import compress.data_keeper.services.mapping.UserMapperService;
 import compress.data_keeper.services.utilities.FileUtilities;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,9 +34,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.services.interfaces.FileService.ORIGINAL_FILE_KEY;
@@ -127,9 +133,7 @@ class FileControllerTest {
                 .userName(TEST_USER_NAME_1)
                 .password(USER1_PASSWORD)
                 .build();
-
         userRepository.save(mapperService.toEntity(dto1));
-
         String dtoJson1 = mapper.writeValueAsString(
                 LoginDto.builder()
                         .email(USER1_EMAIL)
@@ -140,7 +144,6 @@ class FileControllerTest {
                         .content(dtoJson1))
                 .andExpect(status().isOk())
                 .andReturn();
-
         String jsonResponse1 = result1.getResponse().getContentAsString();
         TokenResponseDto responseDto1 = mapper.readValue(jsonResponse1, TokenResponseDto.class);
         accessToken1 = responseDto1.getAccessToken();
@@ -155,9 +158,7 @@ class FileControllerTest {
                 .userName(TEST_USER_NAME_2)
                 .password(USER2_PASSWORD)
                 .build();
-
         userRepository.save(mapperService.toEntity(dto2));
-
         String dtoJson2 = mapper.writeValueAsString(
                 LoginDto.builder()
                         .email(USER2_EMAIL)
@@ -168,7 +169,6 @@ class FileControllerTest {
                         .content(dtoJson2))
                 .andExpect(status().isOk())
                 .andReturn();
-
         String jsonResponse2 = result2.getResponse().getContentAsString();
         TokenResponseDto responseDto2 = mapper.readValue(jsonResponse2, TokenResponseDto.class);
         accessToken2 = responseDto2.getAccessToken();
@@ -183,10 +183,8 @@ class FileControllerTest {
                 .userName(TEST_ADMIN_NAME)
                 .password(ADMIN_PASSWORD)
                 .build();
-
         User admin = userRepository.save(mapperService.toEntity(dto));
         admin.setRole(Role.ROLE_ADMIN);
-
         String dtoJson = mapper.writeValueAsString(
                 LoginDto.builder()
                         .email(ADMIN_EMAIL)
@@ -197,7 +195,6 @@ class FileControllerTest {
                         .content(dtoJson))
                 .andExpect(status().isOk())
                 .andReturn();
-
         String jsonResponse = result.getResponse().getContentAsString();
         TokenResponseDto responseDto = mapper.readValue(jsonResponse, TokenResponseDto.class);
         adminAccessToken = responseDto.getAccessToken();
@@ -225,7 +222,6 @@ class FileControllerTest {
         Set<String> sizes = IMAGE_SIZES.stream()
                 .map(FileUtilities::getNameFromSizes)
                 .collect(Collectors.toSet());
-
         sizes.forEach(s -> {
             String linkValue = responseDto.getLinksToFiles().get(s);
             assertNotNull(linkValue);
@@ -237,7 +233,6 @@ class FileControllerTest {
         Set<String> sizes = IMAGE_SIZES.stream()
                 .map(FileUtilities::getNameFromSizes)
                 .collect(Collectors.toSet());
-
         sizes.forEach(s -> {
             String linkValue = responseDto.getLinksToFiles().get(s);
             assertNull(linkValue);
@@ -245,7 +240,6 @@ class FileControllerTest {
     }
 
     private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
-
         UUID originalFileId = responseDto.getFileId();
         String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
 
@@ -261,7 +255,6 @@ class FileControllerTest {
             assertNotNull(f);
             assertEquals(f.getBucketName(), bucketName);
         });
-
     }
 
     private UUID uploadTextFile(
@@ -314,7 +307,6 @@ class FileControllerTest {
                 FileDto.builder()
                         .fileId(fileId)
                         .build());
-
         mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonDto)
@@ -558,6 +550,29 @@ class FileControllerTest {
         }
 
         @Test
+        public void create_file_temp_status_401_when_user_isnt_authorized() throws Exception {
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    "testfile.txt",
+                    "text/plain",
+                    "This is the content of the test file".getBytes()
+            );
+            String fileDescription = "Test file description";
+            String folderName = "Test folder name";
+            String folderDescription = "Test folder description";
+            String folderPath = "";
+            mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                            .file(mockFile)
+                            .param("fileDescription", fileDescription)
+                            .param("folderName", folderName)
+                            .param("folderDescription", folderDescription)
+                            .param("folderPath", folderPath)
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
         public void create_file_temp_status_404_when_folder_path_is_not_found() throws Exception {
 
             MockMultipartFile mockFile = new MockMultipartFile(
@@ -705,6 +720,20 @@ class FileControllerTest {
 
             checkResponse(responseDto, bucketName);
             checkFileAndFolderInfoDBData(responseDto, bucketName);
+        }
+
+        @Test
+        public void save_temp_files_with_status_401_when_user_isnt_authorized() throws Exception {
+            String jsonDto = mapper.writeValueAsString(
+                    FileDto.builder()
+                            .fileId(originalFileId)
+                            .build());
+
+            mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
+                    .andExpect(status().isUnauthorized());
         }
 
         @Test
@@ -856,7 +885,6 @@ class FileControllerTest {
         @Test
         public void get_all_files_with_status_200() throws Exception {
             int countOfFiles = uploadAndMoveSomeFileForTest();
-
             MvcResult result = mockMvc.perform(get(GET_ALL_FILES_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -878,7 +906,66 @@ class FileControllerTest {
                         checkResponse(f, fileInfo.getBucketName());
                     }
             );
+        }
 
+        @ParameterizedTest(name = "Тест {index}: Get all files with status 400 when pagination is wrong[{arguments}]")
+        @MethodSource("incorrectPaginationArgs")
+        public void get_all_files_with_status_400_when_pagination_is_wrong(MultiValueMap<String, String> params) throws Exception {
+            mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .params(params)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                    .andExpect(status().isBadRequest());
+        }
+
+        private static Stream<Arguments> incorrectPaginationArgs() {
+            MultiValueMap<String, String> params1 = new LinkedMultiValueMap<>();
+            params1.add("page", "-4");
+            params1.add("size", "10");
+            params1.add("sortBy", "createdAt");
+            params1.add("isAsc", "true");
+
+            MultiValueMap<String, String> params2 = new LinkedMultiValueMap<>();
+            params2.add("page", "0");
+            params2.add("size", "-20");
+            params2.add("sortBy", "updatedAt");
+            params2.add("isAsc", "false");
+
+            MultiValueMap<String, String> params3 = new LinkedMultiValueMap<>();
+            params3.add("page", "-2");
+            params3.add("size", "-10");
+            params3.add("sortBy", "createdAt");
+            params3.add("isAsc", "false");
+
+            MultiValueMap<String, String> params4 = new LinkedMultiValueMap<>();
+            params4.add("page", "3");
+            params4.add("size", "0");
+            params4.add("sortBy", "createdAt");
+            params4.add("isAsc", "false");
+
+            return Stream.of(
+                    Arguments.of(params1),
+                    Arguments.of(params2),
+                    Arguments.of(params3),
+                    Arguments.of(params4)
+            );
+        }
+
+        @Test
+        public void get_all_files_with_status_401_when_user_isnt_authorized() throws Exception {
+            mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        public void get_all_files_with_status_403_when_user_doesnt_have_admin_right() throws Exception {
+            loginUser2();
+            mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2))
+                    .andExpect(status().isForbidden());
         }
     }
 }

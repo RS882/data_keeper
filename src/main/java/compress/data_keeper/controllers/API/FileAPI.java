@@ -40,12 +40,7 @@ public interface FileAPI {
             @ApiResponse(responseCode = "200", description = "File uploaded successfully",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = FileResponseDto.class))),
-            @ApiResponse(responseCode = "401",
-                    description = "Unauthorized user",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseMessageDto.class)
-                    )),
+
             @ApiResponse(responseCode = "400", description = "Request is wrong",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
@@ -67,6 +62,12 @@ public interface FileAPI {
                                                     "}"
                                     )
                             })),
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
             @ApiResponse(responseCode = "404",
                     description = "Not found",
                     content = @Content(
@@ -99,12 +100,7 @@ public interface FileAPI {
             @ApiResponse(responseCode = "200", description = "File saved successfully",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = FileResponseDto.class))),
-            @ApiResponse(responseCode = "401",
-                    description = "Unauthorized user",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseMessageDto.class)
-                    )),
+
             @ApiResponse(responseCode = "400", description = "Request is wrong",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
@@ -131,6 +127,18 @@ public interface FileAPI {
                                             value = "{\"message\": \"File is empty\"}"
                                     )
                             })),
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "403",
+                    description = "User doesn't have right for this resource",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
             @ApiResponse(responseCode = "404",
                     description = "Not found",
                     content = @Content(
@@ -161,20 +169,21 @@ public interface FileAPI {
             @ApiResponse(responseCode = "200", description = "Response get successfully",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = FileResponseDtoWithPagination.class))),
-            @ApiResponse(responseCode = "401",
-                    description = "Unauthorized user",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseMessageDto.class)
-                    )),
+
             @ApiResponse(responseCode = "400",
                     description = "Invalid input",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
-            @ApiResponse(responseCode = "404",
-                    description = "Not found",
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "403",
+                    description = "User doesn't have right for this resource",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ResponseMessageDto.class)

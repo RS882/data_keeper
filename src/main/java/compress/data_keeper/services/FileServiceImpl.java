@@ -226,22 +226,6 @@ public class FileServiceImpl implements FileService {
         return getFileResponseDtoByFileInfos(updatedFileInfo, bucketName);
     }
 
-    @Override
-    public FileResponseDtoWithPagination findAllFiles(Pageable pageable) {
-        Page<FileInfo> filesInfos = findAllFileInfo(pageable);
-        FileResponseDtoWithPagination responseDto =
-                fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
-
-        Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
-                .map(fi -> {
-                    Folder folder = fi.getFolder();
-                    List<FileInfo> fileInfos = getFileInfoByFolderId(folder.getId());
-                    return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());
-                }).collect(Collectors.toSet());
-        responseDto.setFiles(fileResponseDtoSet);
-        return responseDto;
-    }
-
     private List<FileInfo> remoteFilesInBucket(List<FileInfo> filesInfo) {
         return filesInfo.stream().map(fi -> {
             String newFilePath = getNewPath(fi.getPath());
@@ -256,6 +240,22 @@ public class FileServiceImpl implements FileService {
         String normalizedTempFilePath = toUnixStylePath(tempFilePath);
         String basePath = normalizedTempFilePath.substring(normalizedTempFilePath.indexOf("/"));
         return dirPrefix + basePath;
+    }
+
+    @Override
+    public FileResponseDtoWithPagination findAllFiles(Pageable pageable) {
+        Page<FileInfo> filesInfos = findAllFileInfo(pageable);
+        FileResponseDtoWithPagination responseDto =
+                fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
+
+        Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
+                .map(fi -> {
+                    Folder folder = fi.getFolder();
+                    List<FileInfo> fileInfos = getFileInfoByFolderId(folder.getId());
+                    return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());
+                }).collect(Collectors.toSet());
+        responseDto.setFiles(fileResponseDtoSet);
+        return responseDto;
     }
 
     @Override
