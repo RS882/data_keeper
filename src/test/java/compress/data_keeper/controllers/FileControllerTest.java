@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
@@ -26,6 +27,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.annotation.Rollback;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 @DisplayName("File controller integration tests: ")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -101,6 +104,7 @@ class FileControllerTest {
 
     private static final String FILE_TEMP_LOAD_PATH = "/v1/file/temp";
     private static final String SAVE_TEMP_FILE_PATH = "/v1/file/save";
+    private static final String GET_ALL_FILES_PATH = "/v1/file/all";
     private final String LOGIN_URL = "/v1/auth/login";
 
     @BeforeAll
@@ -260,9 +264,67 @@ class FileControllerTest {
 
     }
 
+    private UUID uploadTextFile(
+            String fileName,
+            String fileContent,
+            String fileDescription,
+            String folderName,
+            String folderDescription,
+            String folderPath,
+            String token) throws Exception {
+        MockMultipartFile mockFile = new MockMultipartFile(
+                "file",
+                fileName,
+                "text/plain",
+                fileContent.getBytes()
+        );
+        MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                        .file(mockFile)
+                        .param("fileDescription", fileDescription)
+                        .param("folderName", folderName)
+                        .param("folderDescription", folderDescription)
+                        .param("folderPath", folderPath)
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        String jsonResponse = result.getResponse().getContentAsString();
+        FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
+        return responseDto.getFileId();
+    }
+
+    private UUID uploadTextFile(
+            String fileName,
+            String fileContent,
+            String fileDescription,
+            String folderName,
+            String folderDescription,
+            String folderPath) throws Exception {
+        return uploadTextFile(fileName,
+                fileContent,
+                fileDescription,
+                folderName,
+                folderDescription,
+                folderPath,
+                accessToken1);
+    }
+
+    private void moveTempFileInBucket(UUID fileId) throws Exception {
+        String jsonDto = mapper.writeValueAsString(
+                FileDto.builder()
+                        .fileId(fileId)
+                        .build());
+
+        mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonDto)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                .andExpect(status().isOk());
+    }
+
     @Nested
     @DisplayName("POST /v1/file/temp")
-    class FileTempUploadTest {
+    class FileTempUploadTests {
 
         @Test
         public void create_file_temp_status_200_for_new_txt_file_in_new_dir() throws Exception {
@@ -532,7 +594,7 @@ class FileControllerTest {
 
     @Nested
     @DisplayName("PATCH /v1/file/save")
-    class SaveTempFileInBucket {
+    class SaveTempFileInBucketTests {
 
         private UUID originalFileId;
 
@@ -712,7 +774,7 @@ class FileControllerTest {
             FileInfoDto fileInfoDto = new FileInfoDto();
             fileInfoDto.setBucketName("testbucketname");
 
-           FileInfo fi = fileInfoService.updateFileInfo(originalFileId, fileInfoDto);
+            FileInfo fi = fileInfoService.updateFileInfo(originalFileId, fileInfoDto);
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
                             .fileId(originalFileId)
@@ -757,6 +819,50 @@ class FileControllerTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors").isArray());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /v1/file/all")
+    class GetAllFilesTests {
+
+        @BeforeEach
+        void setUp() throws Exception {
+            loginAdmin();
+        }
+
+        @Test
+        public void get_all_files_with_status_200() throws Exception {
+            Random random = new Random();
+            int countOfFiles = random.nextInt(12) + 20;
+            for (int i = 0; i < countOfFiles; i++) {
+                UUID fileId = uploadTextFile("testfile" + i + ".txt",
+                        i + "This is the content of the test file" + i,
+                        "Test file description" + i,
+                        "Test folder name" + i,
+                        "Test folder description" + i,
+                        "");
+                if (random.nextBoolean()) {
+                    moveTempFileInBucket(fileId);
+                }
+            }
+
+            MvcResult result = mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.files").isArray())
+                    .andExpect(jsonPath("$.pageNumber", is(0)))
+                    .andExpect(jsonPath("$.pageSize", is(10)))
+                    .andExpect(jsonPath("$.totalPages", is((countOfFiles + 10 - 1) / 10)))
+                    .andExpect(jsonPath("$.totalElements", is(countOfFiles)))
+                    .andExpect(jsonPath("$.isFirstPage", is(true)))
+                    .andExpect(jsonPath("$.isLastPage", is(false)))
+                    .andReturn();
+            String jsonResponse = result.getResponse().getContentAsString();
+            FileResponseDtoWithPagination responseDto = mapper.readValue(jsonResponse, FileResponseDtoWithPagination.class);
+
         }
     }
 }

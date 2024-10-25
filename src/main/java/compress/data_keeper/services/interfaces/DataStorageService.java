@@ -12,10 +12,6 @@ import java.util.Map;
 
 public interface DataStorageService {
 
-    void setBucketName(String bucketName);
-
-    void setNewBucketName(String newBucketName);
-
     ObjectWriteResponse uploadFIle(String objectFile, String outputFile);
 
     ObjectWriteResponse uploadFIle(InputStream inputStream, String outputFile, String originalFileName);
@@ -38,7 +34,7 @@ public interface DataStorageService {
 
     void deleteObject(String objectPath);
 
-    boolean isObjectExist(String objectPath,String bucketName);
+    boolean isObjectExist(String objectPath, String bucketName);
 
     void deleteObjectsFromBucket(String bucketName, List<String> objectsNames);
 

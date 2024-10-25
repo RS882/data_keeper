@@ -24,12 +24,12 @@ import lombok.RequiredArgsConstructor;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import org.springframework.data.domain.Pageable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -77,9 +77,6 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public FileResponseDto uploadFileTemporary(FileCreationDto fileCreationDto, User user) {
-
-        dataStorageService.setBucketName(tempBucketName);
-
         MultipartFile file = toCustomMultipartFile(fileCreationDto.getFile());
 
         checkFile(file);
@@ -199,12 +196,7 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public FileResponseDto saveTemporaryFile(FileDto dto, User user) {
-
-        dataStorageService.setBucketName(tempBucketName);
-        dataStorageService.setNewBucketName(bucketName);
-
         UUID originalFileId = dto.getFileId();
-
         FileInfo tempFileInfo = fileInfoService.findOriginalFileInfoById(originalFileId);
 
         if (!tempFileInfo.getBucketName().equals(tempBucketName)) {
@@ -241,7 +233,7 @@ public class FileServiceImpl implements FileService {
                 fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
 
         Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
-                .map(fi->{
+                .map(fi -> {
                     Folder folder = fi.getFolder();
                     List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
                     return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());

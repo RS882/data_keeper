@@ -4,7 +4,6 @@ import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import io.minio.*;
-import io.minio.errors.*;
 import io.minio.http.Method;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
@@ -16,11 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,19 +39,12 @@ public class DataStorageServiceImpl implements DataStorageService {
     @Value("${url-lifetime}")
     private int urlLifeTime;
 
-    private String bucketName;
-
+    @Value("${bucket.name}")
     private String newBucketName;
 
-    @Override
-    public void setBucketName(String bucketName) {
-        this.bucketName = bucketName;
-    }
+    @Value("${bucket.temp}")
+    private String tempBucketName;
 
-    @Override
-    public void setNewBucketName(String newBucketName) {
-        this.newBucketName = newBucketName;
-    }
 
     @Override
     public ObjectWriteResponse uploadFIle(String objectFile, String outputFile) {
@@ -64,7 +53,7 @@ public class DataStorageServiceImpl implements DataStorageService {
             return minioClient.uploadObject(
                     UploadObjectArgs
                             .builder()
-                            .bucket(bucketName)
+                            .bucket(tempBucketName)
                             .object(toUnixStylePath(outputFile))
                             .filename(objectFile)
                             .build());
@@ -97,7 +86,7 @@ public class DataStorageServiceImpl implements DataStorageService {
         try {
             return minioClient.putObject(
                     PutObjectArgs.builder()
-                            .bucket(bucketName)
+                            .bucket(tempBucketName)
                             .object(toUnixStylePath(outputFile))
                             .stream(fileInputStream, fileInputStream.available(), -1)
                             .contentType(inputStreamDto.getContentType())
@@ -119,7 +108,7 @@ public class DataStorageServiceImpl implements DataStorageService {
                             .object(newFilePath)
                             .source(
                                     CopySource.builder()
-                                            .bucket(bucketName)
+                                            .bucket(tempBucketName)
                                             .object(currentFilePath)
                                             .build())
                             .build());
@@ -168,7 +157,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     public void checkAndCreateBucket() {
-        checkAndCreateBucket(bucketName, false);
+        checkAndCreateBucket(tempBucketName, false);
     }
 
     @Override
@@ -193,7 +182,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     public String getTempLink(String path) {
-        return getTempLink(path, bucketName);
+        return getTempLink(path, tempBucketName);
     }
 
     private Map<String, String> getQueryParamsForFile(String path, String bucketName) {
@@ -288,7 +277,7 @@ public class DataStorageServiceImpl implements DataStorageService {
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
-                            .bucket(bucketName)
+                            .bucket(tempBucketName)
                             .object(objectPath)
                             .build());
             log.info("Object deleted successful : {}", objectPath);
@@ -298,7 +287,7 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
-    public boolean isObjectExist(String objectPath,String bucketName) {
+    public boolean isObjectExist(String objectPath, String bucketName) {
         try {
             minioClient.statObject(
                     StatObjectArgs.builder()
@@ -351,7 +340,7 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public void clearAndDeleteBucket(String bucketName) {
-       if(!checkBucket(bucketName)) return;
+        if (!checkBucket(bucketName)) return;
         Iterable<Result<Item>> objects = getAllObjectFromBucket(bucketName);
         List<String> objectsToDelete = StreamSupport.stream(objects.spliterator(), false)
                 .map(result -> {

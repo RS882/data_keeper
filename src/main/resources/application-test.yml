@@ -1,27 +1,22 @@
 spring:
   application:
-    name: data-keeper
+    name: test-data-keeper
   servlet:
     multipart:
       max-file-size: 200MB
       max-request-size: 200MB
   datasource:
-    url: jdbc:mysql://${DB}?serverTimezone=UTC
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:h2:mem:testdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
   jpa:
     hibernate:
       ddl-auto: update
-#    show-sql: true
-#    open-in-view: false
-#    properties:
-#      hibernate:
-#        format_sql: true
 server:
   servlet:
     context-path: /api
-  port: ${PORT:8080}
+  port: ${PORT:8090}
 data:
   temp-folder: ${TEMP_FOLDER:temp}
 storage:
@@ -38,11 +33,6 @@ minio:
 key:
   access: ${ACCESS_SECRET}
   refresh: ${REFRESH_SECRET}
-#logging:
-#  level:
-#    root: DEBUG
-#  file:
-#    name: app.log
 
 
 
