@@ -1,11 +1,17 @@
 package compress.data_keeper.services.interfaces;
 
+import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
+import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.UUID;
 
 
 public interface FileService {
@@ -17,4 +23,18 @@ public interface FileService {
     FileResponseDto saveTemporaryFile(FileDto dto, User user);
 
     FileResponseDtoWithPagination findAllFiles(Pageable pageable);
+
+    FileInfo createFileInfo(FileInfoDto dto);
+
+    List<FileInfo> createFileInfo(List<FileInfoDto> dtos);
+
+    FileInfo findOriginalFileInfoById(UUID id);
+
+    List<FileInfo> getFileInfoByFolderId(UUID folderId);
+
+    void deleteAllFileInfosByFolderId(UUID folderId);
+
+    FileInfo updateFileInfo(UUID fileId, FileInfoDto dto);
+
+    Page<FileInfo> findAllFileInfo(Pageable pageable);
 }

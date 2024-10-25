@@ -12,10 +12,11 @@ import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.bad_requeat.exceptions.BadFileBucketName;
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderNotFoundException;
+import compress.data_keeper.exception_handler.not_found.exceptions.FileInfoNotFound;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
+import compress.data_keeper.repository.FileInfoRepository;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
 import compress.data_keeper.services.interfaces.DataStorageService;
-import compress.data_keeper.services.interfaces.FileInfoService;
 import compress.data_keeper.services.interfaces.FileService;
 import compress.data_keeper.services.interfaces.FolderService;
 import compress.data_keeper.services.mapping.FileInfoMapperService;
@@ -52,12 +53,11 @@ public class FileServiceImpl implements FileService {
 
     private final FolderService folderService;
 
-    private final FileInfoService fileInfoService;
-
     private final FolderDtoMapperService folderDtoMapperService;
 
     private final FileInfoMapperService fileInfoMapperService;
 
+    private final FileInfoRepository fileInfoRepository;
 
     @Value("${url-lifetime}")
     private int urlLifeTime;
@@ -89,7 +89,7 @@ public class FileServiceImpl implements FileService {
         FileInfoDto fileInfoDto = new FileInfoDto(file, folderForFile, fileCreationDto.getFileDescription());
         fileInfoDto.setIsOriginalFile(true);
         fileInfoDto.setBucketName(tempBucketName);
-        final FileInfo fileInfo = fileInfoService.createFileInfo(fileInfoDto);
+        final FileInfo fileInfo = createFileInfo(fileInfoDto);
 
         dataStorageService.uploadFIle(file, fileInfo.getPath()).object();
 
@@ -157,7 +157,7 @@ public class FileServiceImpl implements FileService {
                 fileInfoDto.setBucketName(tempBucketName);
                 fileInfoDtoList.add(fileInfoDto);
             });
-            return fileInfoService.createFileInfo(fileInfoDtoList);
+            return createFileInfo(fileInfoDtoList);
         } else {
             return getEmptyFilesInfos();
         }
@@ -197,7 +197,7 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public FileResponseDto saveTemporaryFile(FileDto dto, User user) {
         UUID originalFileId = dto.getFileId();
-        FileInfo tempFileInfo = fileInfoService.findOriginalFileInfoById(originalFileId);
+        FileInfo tempFileInfo = findOriginalFileInfoById(originalFileId);
 
         if (!tempFileInfo.getBucketName().equals(tempBucketName)) {
             throw new BadFileBucketName(
@@ -212,7 +212,7 @@ public class FileServiceImpl implements FileService {
 
         checkUserRights(folder, user);
 
-        List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+        List<FileInfo> fileInfos = getFileInfoByFolderId(folder.getId());
         if (fileInfos.isEmpty()) {
             throw new FileInFolderNotFoundException(folderPath);
         }
@@ -228,14 +228,14 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponseDtoWithPagination findAllFiles(Pageable pageable) {
-        Page<FileInfo> filesInfos = fileInfoService.findAllFileInfo(pageable);
+        Page<FileInfo> filesInfos = findAllFileInfo(pageable);
         FileResponseDtoWithPagination responseDto =
                 fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
 
         Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
                 .map(fi -> {
                     Folder folder = fi.getFolder();
-                    List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+                    List<FileInfo> fileInfos = getFileInfoByFolderId(folder.getId());
                     return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());
                 }).collect(Collectors.toSet());
         responseDto.setFiles(fileResponseDtoSet);
@@ -256,5 +256,61 @@ public class FileServiceImpl implements FileService {
         String normalizedTempFilePath = toUnixStylePath(tempFilePath);
         String basePath = normalizedTempFilePath.substring(normalizedTempFilePath.indexOf("/"));
         return dirPrefix + basePath;
+    }
+
+    @Override
+    @Transactional
+    public FileInfo createFileInfo(FileInfoDto dto) {
+        List<FileInfo> fileInfos = createFileInfo(Collections.singletonList(dto));
+        return fileInfos.get(0);
+    }
+
+    @Override
+    @Transactional
+    public List<FileInfo> createFileInfo(List<FileInfoDto> dtos) {
+        List<FileInfo> fileInfos = dtos.stream()
+                .map(fileInfoMapperService::toFileInfo)
+                .toList();
+
+        List<FileInfo> createdFileInfos = fileInfoRepository.saveAll(fileInfos);
+
+        createdFileInfos.forEach(fi -> {
+            if (fi.getPath() == null || fi.getPath().isBlank()) {
+                Path outputFilePath = Path.of(fi.getFolder().getPath(),
+                        fi.getId() + getFileExtension(fi.getName()));
+                fi.setPath(toUnixStylePath(outputFilePath.toString()));
+            }
+        });
+        return createdFileInfos;
+    }
+
+    @Override
+    public FileInfo findOriginalFileInfoById(UUID id) {
+        return fileInfoRepository.findByIdAndIsOriginalFileTrue(id)
+                .orElseThrow(() -> new FileInfoNotFound(id));
+    }
+
+    @Override
+    @Transactional
+    public List<FileInfo> getFileInfoByFolderId(UUID folderId) {
+        return fileInfoRepository.findByFolderId(folderId);
+    }
+
+    @Override
+    public void deleteAllFileInfosByFolderId(UUID folderId) {
+        fileInfoRepository.deleteAllByFolderId(folderId);
+    }
+
+    @Override
+    @Transactional
+    public FileInfo updateFileInfo(UUID fileId, FileInfoDto dto) {
+        FileInfo fileInfo = findOriginalFileInfoById(fileId);
+        fileInfoMapperService.updateFileInfo(dto, fileInfo);
+        return fileInfo;
+    }
+
+    @Override
+    public Page<FileInfo> findAllFileInfo(Pageable pageable) {
+        return fileInfoRepository.findAllByIsOriginalFileTrue(pageable);
     }
 }

@@ -14,7 +14,7 @@ import compress.data_keeper.security.contstants.Role;
 import compress.data_keeper.security.domain.dto.LoginDto;
 import compress.data_keeper.security.domain.dto.TokenResponseDto;
 import compress.data_keeper.services.interfaces.DataStorageService;
-import compress.data_keeper.services.interfaces.FileInfoService;
+import compress.data_keeper.services.interfaces.FileService;
 import compress.data_keeper.services.interfaces.FolderService;
 import compress.data_keeper.services.mapping.UserMapperService;
 import compress.data_keeper.services.utilities.FileUtilities;
@@ -69,7 +69,7 @@ class FileControllerTest {
     private FolderService folderService;
 
     @Autowired
-    private FileInfoService fileInfoService;
+    private FileService fileService;
 
     @Value("${bucket.name}")
     private String bucketName;
@@ -217,7 +217,7 @@ class FileControllerTest {
         UUID originalFileId = responseDto.getFileId();
         assertNotNull(originalFileId);
 
-        String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
+        String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
         assertTrue(dataStorageService.isObjectExist(originalFilePath, bucketName));
     }
 
@@ -247,7 +247,7 @@ class FileControllerTest {
     private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
 
         UUID originalFileId = responseDto.getFileId();
-        String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
+        String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
 
         String folderPath = getFolderPathByFilePath(originalFilePath);
         Folder folder = folderService.getFolderByFolderPath(folderPath);
@@ -255,7 +255,7 @@ class FileControllerTest {
         assertEquals(folder.getOwner().getId(), currentUserId1);
         assertEquals(folder.getBucketName(), bucketName);
 
-        List<FileInfo> filesInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+        List<FileInfo> filesInfos = fileService.getFileInfoByFolderId(folder.getId());
         assertNotNull(filesInfos);
         filesInfos.forEach(f -> {
             assertNotNull(f);
@@ -445,7 +445,7 @@ class FileControllerTest {
             String jsonResponse = result.getResponse().getContentAsString();
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
             UUID originalFileId = responseDto.getFileId();
-            String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
+            String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
             String pathFolder = originalFilePath.substring(0, originalFilePath.lastIndexOf("/")).trim();
 
             MockMultipartFile mockFile2 = new MockMultipartFile(
@@ -727,8 +727,8 @@ class FileControllerTest {
         @Test
         public void save_temp_files_with_status_404_when_file_id_is_not_original_file_id() throws Exception {
 
-            Folder folder = fileInfoService.findOriginalFileInfoById(originalFileId).getFolder();
-            List<FileInfo> fileInfos = fileInfoService.getFileInfoByFolderId(folder.getId());
+            Folder folder = fileService.findOriginalFileInfoById(originalFileId).getFolder();
+            List<FileInfo> fileInfos = fileService.getFileInfoByFolderId(folder.getId());
             UUID someFileId = fileInfos.stream()
                     .filter(f -> !f.getIsOriginalFile())
                     .findFirst()
@@ -775,10 +775,10 @@ class FileControllerTest {
                             .fileId(originalFileId)
                             .build());
 
-            String originalFilePath = fileInfoService.findOriginalFileInfoById(originalFileId).getPath();
+            String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
             String folderPath = getFolderPathByFilePath(originalFilePath);
             Folder folder = folderService.getFolderByFolderPath(folderPath);
-            fileInfoService.deleteAllFileInfosByFolderId(folder.getId());
+            fileService.deleteAllFileInfosByFolderId(folder.getId());
 
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -796,7 +796,7 @@ class FileControllerTest {
             FileInfoDto fileInfoDto = new FileInfoDto();
             fileInfoDto.setBucketName("testbucketname");
 
-            FileInfo fi = fileInfoService.updateFileInfo(originalFileId, fileInfoDto);
+            FileInfo fi = fileService.updateFileInfo(originalFileId, fileInfoDto);
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
                             .fileId(originalFileId)
@@ -874,7 +874,7 @@ class FileControllerTest {
             FileResponseDtoWithPagination responseDto = mapper.readValue(jsonResponse, FileResponseDtoWithPagination.class);
             responseDto.getFiles().forEach(
                     f -> {
-                        FileInfo fileInfo = fileInfoService.findOriginalFileInfoById(f.getFileId());
+                        FileInfo fileInfo = fileService.findOriginalFileInfoById(f.getFileId());
                         checkResponse(f, fileInfo.getBucketName());
                     }
             );

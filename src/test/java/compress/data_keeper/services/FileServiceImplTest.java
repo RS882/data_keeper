@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayNameGeneration(value = DisplayNameGenerator.ReplaceUnderscores.class)
-class FileInfoServiceImplTest {
+class FileServiceImplTest {
 
     @Mock
     private FileInfoRepository fileInfoRepository;
@@ -32,7 +32,7 @@ class FileInfoServiceImplTest {
     private FileInfoMapperService fileInfoMapperService;
 
     @InjectMocks
-    private FileInfoServiceImpl fileInfoService;
+    private FileServiceImpl fileService;
 
     @Nested
     @DisplayName("Tests for createFileInfo method")
@@ -79,7 +79,7 @@ class FileInfoServiceImplTest {
             when(fileInfoMapperService.toFileInfo(dto2)).thenReturn(fileInfo2);
             when(fileInfoRepository.saveAll(any())).thenReturn(List.of(fileInfo1, fileInfo2));
 
-            List<FileInfo> createdFileInfos = fileInfoService.createFileInfo(dtos);
+            List<FileInfo> createdFileInfos = fileService.createFileInfo(dtos);
 
             assertEquals(2, createdFileInfos.size());
             assertEquals(file1Id, createdFileInfos.get(0).getId());
