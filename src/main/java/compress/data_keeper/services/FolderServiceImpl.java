@@ -28,9 +28,7 @@ public class FolderServiceImpl implements FolderService {
     @Override
     @Transactional
     public Folder getFolder(FolderDto dto, User user, String dirPrefix) {
-
         folderPrefix = dirPrefix;
-
         if (dto == null) {
             return createFolder(user);
         } else {
@@ -55,7 +53,6 @@ public class FolderServiceImpl implements FolderService {
                 .name(LocalDateTime.now().toString())
                 .owner(user)
                 .build();
-
         return createFolder(folder);
     }
 
@@ -70,7 +67,6 @@ public class FolderServiceImpl implements FolderService {
                 .bucketName(dto.getBucketName())
                 .owner(user)
                 .build();
-
         return createFolder(folder);
     }
 

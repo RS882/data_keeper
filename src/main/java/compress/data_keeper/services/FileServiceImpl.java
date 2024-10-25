@@ -244,10 +244,19 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponseDtoWithPagination findAllFiles(Pageable pageable) {
-        Page<FileInfo> filesInfos = findAllFileInfo(pageable);
+        Page<FileInfo> filesInfos = fileInfoRepository.findAllByIsOriginalFileTrue(pageable);
+        return getFileResponseDtoWithPagination(filesInfos);
+    }
+
+    @Override
+    public FileResponseDtoWithPagination findFilesByUserId(Long userId, Pageable pageable) {
+        Page<FileInfo> filesInfos = fileInfoRepository.findOriginalFilesByUserId(userId, pageable);
+        return getFileResponseDtoWithPagination(filesInfos);
+    }
+
+    private FileResponseDtoWithPagination getFileResponseDtoWithPagination(Page<FileInfo> filesInfos) {
         FileResponseDtoWithPagination responseDto =
                 fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
-
         Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
                 .map(fi -> {
                     Folder folder = fi.getFolder();
@@ -291,7 +300,6 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    @Transactional
     public List<FileInfo> getFileInfoByFolderId(UUID folderId) {
         return fileInfoRepository.findByFolderId(folderId);
     }
@@ -307,10 +315,5 @@ public class FileServiceImpl implements FileService {
         FileInfo fileInfo = findOriginalFileInfoById(fileId);
         fileInfoMapperService.updateFileInfo(dto, fileInfo);
         return fileInfo;
-    }
-
-    @Override
-    public Page<FileInfo> findAllFileInfo(Pageable pageable) {
-        return fileInfoRepository.findAllByIsOriginalFileTrue(pageable);
     }
 }

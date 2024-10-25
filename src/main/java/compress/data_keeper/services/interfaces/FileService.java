@@ -1,13 +1,12 @@
 package compress.data_keeper.services.interfaces;
 
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
+import compress.data_keeper.domain.dto.files.FileCreationDto;
 import compress.data_keeper.domain.dto.files.FileDto;
+import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.User;
-import compress.data_keeper.domain.dto.files.FileCreationDto;
-import compress.data_keeper.domain.dto.files.FileResponseDto;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -24,6 +23,8 @@ public interface FileService {
 
     FileResponseDtoWithPagination findAllFiles(Pageable pageable);
 
+    FileResponseDtoWithPagination findFilesByUserId(Long userId, Pageable pageable);
+
     FileInfo createFileInfo(FileInfoDto dto);
 
     List<FileInfo> createFileInfo(List<FileInfoDto> dtos);
@@ -35,6 +36,4 @@ public interface FileService {
     void deleteAllFileInfosByFolderId(UUID folderId);
 
     FileInfo updateFileInfo(UUID fileId, FileInfoDto dto);
-
-    Page<FileInfo> findAllFileInfo(Pageable pageable);
 }

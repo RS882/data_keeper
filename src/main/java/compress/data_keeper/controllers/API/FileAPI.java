@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -197,6 +198,34 @@ public interface FileAPI {
     })
     @GetMapping("/all")
     ResponseEntity<FileResponseDtoWithPagination> getAllFilesLinks(
+            @RequestParam(defaultValue = PAGE_VALUE)
+            @Parameter(description = "Requested page number. ", example = "0")
+            int page,
+            @RequestParam(defaultValue = SIZE_VALUE)
+            @Parameter(description = "Number of entities per page.", example = "10")
+            int size,
+            @RequestParam(defaultValue = SORT_BY)
+            @Parameter(description = "Sorting field.", examples = {
+                    @ExampleObject(name = "Sort by created time(default)", value = "createdAt"),
+                    @ExampleObject(name = "Sort by update time", value = "updatedAt"),
+                    @ExampleObject(name = "Sort by bucket name", value = "bucketName")
+            })
+            String sortBy,
+            @RequestParam(defaultValue = "true")
+            @Parameter(description = "Sorting direction.", examples = {
+                    @ExampleObject(name = "Sort direction is ascending(default)", value = "true"),
+                    @ExampleObject(name = "Sort direction is descending", value = "false")
+            })
+            Boolean isAsc
+    );
+
+    @GetMapping("/all/user/{id}")
+    ResponseEntity<FileResponseDtoWithPagination> getFilesLinksByUserId(
+            @Valid
+            @PathVariable
+            @Parameter(description = "User ID. Minimum value is 1", example = "35")
+            @Min(1)
+            Long id,
             @RequestParam(defaultValue = PAGE_VALUE)
             @Parameter(description = "Requested page number. ", example = "0")
             int page,
