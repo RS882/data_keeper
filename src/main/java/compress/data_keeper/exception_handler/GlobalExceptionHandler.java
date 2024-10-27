@@ -9,6 +9,10 @@ import compress.data_keeper.exception_handler.dto.ValidationErrorsDto;
 import compress.data_keeper.exception_handler.not_found.NotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.exception_handler.bad_requeat.BadRequestException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,14 +23,20 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    private final MessageSource messageSource;
+
+    public GlobalExceptionHandler(@Qualifier("messageSource") MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ResponseMessageDto> handleNotFoundException(AuthenticationException e) {
@@ -50,7 +60,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ResponseMessageDto> handleException(BadRequestException e) {
-            return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(new ResponseMessageDto(e.getMessage()), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(NotFoundException.class)
@@ -85,6 +95,31 @@ public class GlobalExceptionHandler {
 
             validationErrors.add(errorDto);
         }
+        return ResponseEntity.badRequest()
+                .body(ValidationErrorsDto.builder()
+                        .errors(validationErrors)
+                        .build());
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ValidationErrorsDto> handleValidationException(HandlerMethodValidationException ex) {
+        List<ValidationErrorDto> validationErrors = new ArrayList<>();
+
+        ex.getAllValidationResults().forEach(vr -> {
+                    String parameterName = vr.getMethodParameter().getParameterName();
+                    String message = vr.getResolvableErrors().stream()
+                            .map(MessageSourceResolvable::getDefaultMessage)
+                            .findFirst()
+                            .orElse(null);
+
+                    ValidationErrorDto errorDto = ValidationErrorDto.builder()
+                            .field(parameterName)
+                            .message(
+                                    parameterName + ": " + (message == null ? "is wrong" : message))
+                            .build();
+                    validationErrors.add(errorDto);
+                }
+        );
         return ResponseEntity.badRequest()
                 .body(ValidationErrorsDto.builder()
                         .errors(validationErrors)

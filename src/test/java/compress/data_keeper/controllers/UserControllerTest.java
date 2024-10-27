@@ -92,7 +92,7 @@ class UserControllerTest {
                     .andExpect(jsonPath("$.message", isA(String.class)));
         }
 
-        @ParameterizedTest(name = "Тест {index}: createUser_with_status_400_registration_data_is_incorrect [{arguments}]")
+        @ParameterizedTest(name = "Test {index}: createUser_with_status_400_registration_data_is_incorrect [{arguments}]")
         @MethodSource("incorrectRegistrationData")
         public void createUser_with_status_400_registration_data_is_incorrect(UserRegistrationDto dto) throws Exception {
             String dtoJson2 = mapper.writeValueAsString(dto);

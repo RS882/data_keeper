@@ -41,11 +41,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/v1/file/temp").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/v1/file/save").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/file/all").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/v1/file/all/user/{id}").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/v1/file/all/user/{id}").authenticated()
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(validationFilter, UsernamePasswordAuthenticationFilter.class)
-
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .build();

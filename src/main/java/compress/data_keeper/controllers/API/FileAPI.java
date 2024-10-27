@@ -219,11 +219,44 @@ public interface FileAPI {
             Boolean isAsc
     );
 
+    @Operation(summary = "Get all links of file by user id when user id equals current user id or user is admin",
+            description = "This method allows you to get all links of file by user id."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Response get successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = FileResponseDtoWithPagination.class))),
+
+            @ApiResponse(responseCode = "400",
+                    description = "Invalid input",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "403",
+                    description = "User doesn't have right for this resource",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "500",
+                    description = "Server error",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+    })
     @GetMapping("/all/user/{id}")
     ResponseEntity<FileResponseDtoWithPagination> getFilesLinksByUserId(
             @Valid
             @PathVariable
-            @Parameter(description = "User ID. Minimum value is 1", example = "35")
+            @Parameter(description = "User ID. Minimum value is 1", example = "11")
             @Min(1)
             Long id,
             @AuthenticationPrincipal

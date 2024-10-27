@@ -1,5 +1,6 @@
 package compress.data_keeper.controllers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -116,6 +118,7 @@ class FileControllerTest {
     private static final String FILE_TEMP_LOAD_PATH = "/v1/file/temp";
     private static final String SAVE_TEMP_FILE_PATH = "/v1/file/save";
     private static final String GET_ALL_FILES_PATH = "/v1/file/all";
+    private static final String GET_ALL_USERS_FILES_PATH = "/v1/file/all/user/{id}";
     private static final String LOGIN_URL = "/v1/auth/login";
 
     private String fileName = "testfile.txt";
@@ -141,6 +144,10 @@ class FileControllerTest {
 
         mapper.registerModule(new JavaTimeModule());
 
+        loginUser1();
+    }
+
+    private void loginUser1() throws Exception {
         UserRegistrationDto dto1 = UserRegistrationDto
                 .builder()
                 .email(USER1_EMAIL)
@@ -163,7 +170,6 @@ class FileControllerTest {
         accessToken1 = responseDto1.getAccessToken();
         currentUserId1 = responseDto1.getUserId();
     }
-
 
     private void loginUser2() throws Exception {
         UserRegistrationDto dto2 = UserRegistrationDto
@@ -314,6 +320,10 @@ class FileControllerTest {
     }
 
     private FileResponseDto moveTempFileInBucket(UUID fileId) throws Exception {
+        return moveTempFileInBucket(fileId, accessToken1);
+    }
+
+    private FileResponseDto moveTempFileInBucket(UUID fileId, String token) throws Exception {
         String jsonDto = mapper.writeValueAsString(
                 FileDto.builder()
                         .fileId(fileId)
@@ -321,7 +331,7 @@ class FileControllerTest {
         MvcResult result = mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonDto)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andReturn();
         String jsonResponse = result.getResponse().getContentAsString();
@@ -332,10 +342,10 @@ class FileControllerTest {
     private List<FileResponseDto> uploadAndMoveSomeFileForTest() throws Exception {
         Random random = new Random();
         int countOfFiles = random.nextInt(12) + 20;
-        return uploadAndMoveSomeFileForTest(countOfFiles);
+        return uploadAndMoveSomeFileForTest(countOfFiles, accessToken1);
     }
 
-    private List<FileResponseDto> uploadAndMoveSomeFileForTest(int countOfFiles) throws Exception {
+    private List<FileResponseDto> uploadAndMoveSomeFileForTest(int countOfFiles, String token) throws Exception {
         Random random = new Random();
         List<FileResponseDto> dtoList = new ArrayList<>();
         for (int i = 0; i < countOfFiles; i++) {
@@ -344,9 +354,10 @@ class FileControllerTest {
                     "Test file description" + i,
                     "Test folder name" + i,
                     "Test folder description" + i,
-                    "");
+                    "",
+                    token);
             if (random.nextBoolean()) {
-                FileResponseDto movedDto = moveTempFileInBucket(dto.getFileId());
+                FileResponseDto movedDto = moveTempFileInBucket(dto.getFileId(), token);
                 dtoList.add(movedDto);
             } else {
                 dtoList.add(dto);
@@ -966,13 +977,207 @@ class FileControllerTest {
             );
         }
 
-        @ParameterizedTest(name = "Тест {index}: Get all files with status 400 when pagination is wrong[{arguments}]")
+        @ParameterizedTest(name = "Test {index}: Get all files with status 400 when pagination is wrong[{arguments}]")
         @MethodSource("incorrectPaginationArgs")
         public void get_all_files_with_status_400_when_pagination_is_wrong(MultiValueMap<String, String> params) throws Exception {
             mockMvc.perform(get(GET_ALL_FILES_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .params(params)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+private static Stream<Arguments> incorrectPaginationArgs() {
+    MultiValueMap<String, String> params1 = new LinkedMultiValueMap<>();
+    params1.add("page", "-4");
+    params1.add("size", "10");
+    params1.add("sortBy", "createdAt");
+    params1.add("isAsc", "true");
+
+    MultiValueMap<String, String> params2 = new LinkedMultiValueMap<>();
+    params2.add("page", "0");
+    params2.add("size", "-20");
+    params2.add("sortBy", "updatedAt");
+    params2.add("isAsc", "false");
+
+    MultiValueMap<String, String> params3 = new LinkedMultiValueMap<>();
+    params3.add("page", "-2");
+    params3.add("size", "-10");
+    params3.add("sortBy", "createdAt");
+    params3.add("isAsc", "false");
+
+    MultiValueMap<String, String> params4 = new LinkedMultiValueMap<>();
+    params4.add("page", "3");
+    params4.add("size", "0");
+    params4.add("sortBy", "createdAt");
+    params4.add("isAsc", "false");
+
+    return Stream.of(
+            Arguments.of(params1),
+            Arguments.of(params2),
+            Arguments.of(params3),
+            Arguments.of(params4)
+    );
+}
+        @Test
+        public void get_all_files_with_status_401_when_user_isnt_authorized() throws Exception {
+            mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
+        public void get_all_files_with_status_403_when_user_doesnt_have_admin_right() throws Exception {
+            loginUser2();
+            mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /v1/file/all/user/{id}")
+    class GetAllFilesByUserIdTests {
+
+        @Test
+        public void get_all_file_by_user_id_status_200() throws Exception {
+            int countOfFilesUser1 = 8;
+            int countOfFilesUser2 = 5;
+            List<FileResponseDto> uploadFileUser1 = uploadAndMoveSomeFileForTest(countOfFilesUser1, accessToken1);
+            int countOfFiles = uploadFileUser1.size();
+
+            loginUser2();
+            uploadAndMoveSomeFileForTest(countOfFilesUser2, accessToken2);
+
+            MvcResult result = mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, currentUserId1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.files").isArray())
+                    .andExpect(jsonPath("$.pageNumber", is(0)))
+                    .andExpect(jsonPath("$.pageSize", is(10)))
+                    .andExpect(jsonPath("$.totalPages", is((countOfFiles + 10 - 1) / 10)))
+                    .andExpect(jsonPath("$.totalElements", is(countOfFiles)))
+                    .andExpect(jsonPath("$.isFirstPage", is(true)))
+                    .andExpect(jsonPath("$.isLastPage", is(true)))
+                    .andReturn();
+            String jsonResponse = result.getResponse().getContentAsString();
+            FileResponseDtoWithPagination responseDto = mapper.readValue(jsonResponse, FileResponseDtoWithPagination.class);
+            responseDto.getFiles().forEach(
+                    f -> {
+                        FileInfo fileInfo = fileService.findOriginalFileInfoById(f.getFileId());
+                        String bucketName = fileInfo.getBucketName();
+                        FileResponseDto fileResponseDto = uploadFileUser1.stream()
+                                .filter(uf -> uf.getFileId().equals(f.getFileId()))
+                                .findFirst()
+                                .orElse(null);
+                        if (fileResponseDto == null) {
+                            verifyFileResponseDto(f, fileInfo.getName(),
+                                    null, null, null);
+                        } else {
+                            verifyFileResponseDto(f,
+                                    fileResponseDto.getFileName(),
+                                    fileResponseDto.getFileDescription(),
+                                    fileResponseDto.getFolderName(),
+                                    fileResponseDto.getFolderDescription());
+                        }
+                        checkResponse(f, bucketName);
+                        checkFileAndFolderInfoDBData(f, bucketName);
+                    }
+            );
+        }
+
+        @Test
+        public void get_all_file_by_user_id_status_200_when_dont_have_file_by_user_id() throws Exception {
+            int countOfFilesUser2 = 5;
+            loginUser2();
+            uploadAndMoveSomeFileForTest(countOfFilesUser2, accessToken2);
+
+            MvcResult result = mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, currentUserId1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.files").isArray())
+                    .andExpect(jsonPath("$.pageNumber", is(0)))
+                    .andExpect(jsonPath("$.pageSize", is(10)))
+                    .andExpect(jsonPath("$.totalPages", is(0)))
+                    .andExpect(jsonPath("$.totalElements", is(0)))
+                    .andExpect(jsonPath("$.isFirstPage", is(true)))
+                    .andExpect(jsonPath("$.isLastPage", is(true)))
+                    .andReturn();
+            String jsonResponse = result.getResponse().getContentAsString();
+            FileResponseDtoWithPagination responseDto = mapper.readValue(jsonResponse, FileResponseDtoWithPagination.class);
+            assertTrue(responseDto.getFiles().isEmpty());
+        }
+
+        @Test
+        public void get_all_file_by_user_id_status_200_when_user_is_admin() throws Exception {
+            int countOfFilesUser1 = 8;
+            int countOfFilesUser2 = 5;
+            List<FileResponseDto> uploadFileUser1 = uploadAndMoveSomeFileForTest(countOfFilesUser1, accessToken1);
+            int countOfFiles = uploadFileUser1.size();
+
+            loginUser2();
+            uploadAndMoveSomeFileForTest(countOfFilesUser2, accessToken2);
+
+            loginAdmin();
+
+            MvcResult result = mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, currentUserId1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.files").isArray())
+                    .andExpect(jsonPath("$.pageNumber", is(0)))
+                    .andExpect(jsonPath("$.pageSize", is(10)))
+                    .andExpect(jsonPath("$.totalPages", is((countOfFiles + 10 - 1) / 10)))
+                    .andExpect(jsonPath("$.totalElements", is(countOfFiles)))
+                    .andExpect(jsonPath("$.isFirstPage", is(true)))
+                    .andExpect(jsonPath("$.isLastPage", is(true)))
+                    .andReturn();
+            String jsonResponse = result.getResponse().getContentAsString();
+            FileResponseDtoWithPagination responseDto = mapper.readValue(jsonResponse, FileResponseDtoWithPagination.class);
+            responseDto.getFiles().forEach(
+                    f -> {
+                        FileInfo fileInfo = fileService.findOriginalFileInfoById(f.getFileId());
+                        String bucketName = fileInfo.getBucketName();
+                        FileResponseDto fileResponseDto = uploadFileUser1.stream()
+                                .filter(uf -> uf.getFileId().equals(f.getFileId()))
+                                .findFirst()
+                                .orElse(null);
+                        if (fileResponseDto == null) {
+                            verifyFileResponseDto(f, fileInfo.getName(),
+                                    null, null, null);
+                        } else {
+                            verifyFileResponseDto(f,
+                                    fileResponseDto.getFileName(),
+                                    fileResponseDto.getFileDescription(),
+                                    fileResponseDto.getFolderName(),
+                                    fileResponseDto.getFolderDescription());
+                        }
+                        checkResponse(f, bucketName);
+                        checkFileAndFolderInfoDBData(f, bucketName);
+                    }
+            );
+        }
+
+        @ParameterizedTest(name = "Test {index}: Get all files by user id with status 400 when pagination is wrong[{arguments}]")
+        @MethodSource("incorrectPaginationArgs")
+        public void get_all_file_by_user_id_when_pagination_is_wrong(MultiValueMap<String, String> params) throws Exception {
+            mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, currentUserId1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .params(params)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isBadRequest())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").isNotEmpty())
@@ -1012,24 +1217,38 @@ class FileControllerTest {
             );
         }
 
-        @Test
-        public void get_all_files_with_status_401_when_user_isnt_authorized() throws Exception {
-            mockMvc.perform(get(GET_ALL_FILES_PATH)
+        @ParameterizedTest(name = "Test {index}: Get all files by user id with status 400 when user id is wrong[{arguments}]")
+        @ValueSource(longs = {0L, -34L})
+        public void get_all_file_by_user_id_status_400_when_user_id_is_wrong(long userId) throws Exception {
+            mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, userId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
-                    .andExpect(status().isUnauthorized())
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.errors").isArray());
+        }
+
+        @Test
+        public void get_all_file_by_user_id_status_403_user_id_dont_equals_owner_id() throws Exception {
+            loginUser2();
+            mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, currentUserId1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2))
+                    .andExpect(status().isForbidden())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").isNotEmpty())
                     .andExpect(jsonPath("$.message", isA(String.class)));
         }
 
         @Test
-        public void get_all_files_with_status_403_when_user_doesnt_have_admin_right() throws Exception {
-            loginUser2();
-            mockMvc.perform(get(GET_ALL_FILES_PATH)
+        public void get_all_file_by_user_id_status_401_when_user_isnt_authorized() throws Exception {
+            mockMvc.perform(get(GET_ALL_USERS_FILES_PATH, currentUserId1)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2))
-                    .andExpect(status().isForbidden());
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
         }
     }
 }
