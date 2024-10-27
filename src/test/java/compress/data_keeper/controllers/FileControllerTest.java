@@ -1,6 +1,7 @@
 package compress.data_keeper.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
@@ -37,6 +38,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import static compress.data_keeper.services.FolderServiceImpl.DEFAULT_FOLDER_PREFIX_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -111,7 +116,13 @@ class FileControllerTest {
     private static final String FILE_TEMP_LOAD_PATH = "/v1/file/temp";
     private static final String SAVE_TEMP_FILE_PATH = "/v1/file/save";
     private static final String GET_ALL_FILES_PATH = "/v1/file/all";
-    private final String LOGIN_URL = "/v1/auth/login";
+    private static final String LOGIN_URL = "/v1/auth/login";
+
+    private String fileName = "testfile.txt";
+    private String fileDescription = "Test file description";
+    private String folderName = "Test folder name";
+    private String folderDescription = "Test folder description";
+    private String folderPath = "";
 
     @BeforeAll
     void createTestBucket() throws Exception {
@@ -127,6 +138,9 @@ class FileControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
+
+        mapper.registerModule(new JavaTimeModule());
+
         UserRegistrationDto dto1 = UserRegistrationDto
                 .builder()
                 .email(USER1_EMAIL)
@@ -211,10 +225,7 @@ class FileControllerTest {
         assertNotNull(originalFileLink);
         assertInstanceOf(String.class, originalFileLink);
 
-        UUID originalFileId = responseDto.getFileId();
-        assertNotNull(originalFileId);
-
-        String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
+        String originalFilePath = fileService.findOriginalFileInfoById(responseDto.getFileId()).getPath();
         assertTrue(dataStorageService.isObjectExist(originalFilePath, bucketName));
     }
 
@@ -249,7 +260,7 @@ class FileControllerTest {
         assertEquals(folder.getOwner().getId(), currentUserId1);
         assertEquals(folder.getBucketName(), bucketName);
 
-        List<FileInfo> filesInfos = fileService.getFileInfoByFolderId(folder.getId());
+        List<FileInfo> filesInfos = fileService.getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
         assertNotNull(filesInfos);
         filesInfos.forEach(f -> {
             assertNotNull(f);
@@ -257,7 +268,7 @@ class FileControllerTest {
         });
     }
 
-    private UUID uploadTextFile(
+    private FileResponseDto uploadTextFile(
             String fileName,
             String fileContent,
             String fileDescription,
@@ -283,10 +294,10 @@ class FileControllerTest {
                 .andReturn();
         String jsonResponse = result.getResponse().getContentAsString();
         FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
-        return responseDto.getFileId();
+        return responseDto;
     }
 
-    private UUID uploadTextFile(
+    private FileResponseDto uploadTextFile(
             String fileName,
             String fileContent,
             String fileDescription,
@@ -302,38 +313,67 @@ class FileControllerTest {
                 accessToken1);
     }
 
-    private void moveTempFileInBucket(UUID fileId) throws Exception {
+    private FileResponseDto moveTempFileInBucket(UUID fileId) throws Exception {
         String jsonDto = mapper.writeValueAsString(
                 FileDto.builder()
                         .fileId(fileId)
                         .build());
-        mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
+        MvcResult result = mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonDto)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andReturn();
+        String jsonResponse = result.getResponse().getContentAsString();
+        FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
+        return responseDto;
     }
 
-    private int uploadAndMoveSomeFileForTest() throws Exception {
+    private List<FileResponseDto> uploadAndMoveSomeFileForTest() throws Exception {
         Random random = new Random();
         int countOfFiles = random.nextInt(12) + 20;
         return uploadAndMoveSomeFileForTest(countOfFiles);
     }
 
-    private int uploadAndMoveSomeFileForTest(int countOfFiles) throws Exception {
+    private List<FileResponseDto> uploadAndMoveSomeFileForTest(int countOfFiles) throws Exception {
         Random random = new Random();
+        List<FileResponseDto> dtoList = new ArrayList<>();
         for (int i = 0; i < countOfFiles; i++) {
-            UUID fileId = uploadTextFile("testfile" + i + ".txt",
+            FileResponseDto dto = uploadTextFile("testfile" + i + ".txt",
                     i + "This is the content of the test file" + i,
                     "Test file description" + i,
                     "Test folder name" + i,
                     "Test folder description" + i,
                     "");
             if (random.nextBoolean()) {
-                moveTempFileInBucket(fileId);
+                FileResponseDto movedDto = moveTempFileInBucket(dto.getFileId());
+                dtoList.add(movedDto);
+            } else {
+                dtoList.add(dto);
             }
         }
-        return countOfFiles;
+        return dtoList;
+    }
+
+    private void verifyFileResponseDto(FileResponseDto dto,
+                                       String fileName,
+                                       String fileDescription,
+                                       String folderName,
+                                       String folderDescription) {
+        assertNotNull(dto);
+        assertNotNull(dto.getLinksIsValidUntil());
+        assertThat(dto.getLinksIsValidUntil()).isInstanceOf(ZonedDateTime.class);
+        assertThat(dto.getLinksToFiles()).isInstanceOf(Map.class);
+        assertNotNull(dto.getFileId());
+        assertThat(dto.getFileId()).isInstanceOf(UUID.class);
+        assertEquals(fileName, dto.getFileName());
+        assertEquals(fileDescription, dto.getFileDescription());
+        if (folderName == null) {
+            assertThat(dto.getFolderName()).startsWith(DEFAULT_FOLDER_PREFIX_NAME);
+        } else {
+            assertEquals(folderName, dto.getFolderName());
+        }
+        assertEquals(folderDescription, dto.getFolderDescription());
     }
 
     @Nested
@@ -342,17 +382,13 @@ class FileControllerTest {
 
         @Test
         public void create_file_temp_status_200_for_new_txt_file_in_new_dir() throws Exception {
+
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
-
             MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -363,17 +399,11 @@ class FileControllerTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
-                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
-                    .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.fileId",
-                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
-
             String jsonResponse = result.getResponse().getContentAsString();
-
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
+            verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkResponse(responseDto, tempBucketName);
             checkFileAndFolderInfoDBData(responseDto, tempBucketName);
         }
@@ -383,7 +413,7 @@ class FileControllerTest {
 
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
@@ -393,17 +423,12 @@ class FileControllerTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
-                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
-                    .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.fileId",
-                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
 
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
-
+            verifyFileResponseDto(responseDto, fileName, null, null, null);
             checkResponse(responseDto, tempBucketName);
             checkFileAndFolderInfoDBData(responseDto, tempBucketName);
         }
@@ -413,16 +438,10 @@ class FileControllerTest {
 
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
-
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
-
             MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -440,38 +459,30 @@ class FileControllerTest {
             String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
             String pathFolder = originalFilePath.substring(0, originalFilePath.lastIndexOf("/")).trim();
 
+            String fileName2 = "testfile2.txt";
+            String fileDescription2 = "2Test file description2";
+            String folderPath2 = pathFolder;
             MockMultipartFile mockFile2 = new MockMultipartFile(
                     "file",
-                    "testfile2.txt",
+                    fileName2,
                     "text/plain",
                     "This is the content of the test file2".getBytes()
             );
-            String fileDescription2 = "Test file description";
-            String folderName2 = "Test folder name";
-            String folderDescription2 = "Test folder description";
-            String folderPath2 = pathFolder;
 
             MvcResult result2 = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile2)
                             .param("fileDescription", fileDescription2)
-                            .param("folderName", folderName2)
-                            .param("folderDescription", folderDescription2)
                             .param("folderPath", folderPath2)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
-                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
-                    .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.fileId",
-                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse2 = result2.getResponse().getContentAsString();
-
             FileResponseDto responseDto2 = mapper.readValue(jsonResponse2, FileResponseDto.class);
 
+            verifyFileResponseDto(responseDto2, fileName2, fileDescription2, folderName, folderDescription);
             checkResponse(responseDto2, tempBucketName);
             checkFileAndFolderInfoDBData(responseDto2, tempBucketName);
         }
@@ -484,15 +495,10 @@ class FileControllerTest {
 
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.bin",
+                    fileName,
                     "test/test",
                     randomBytes
             );
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
-
             MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -503,22 +509,17 @@ class FileControllerTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
-                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
-                    .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.fileId",
-                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
 
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
+            verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkOriginalFilePath(responseDto, tempBucketName);
             checkFileAndFolderInfoDBData(responseDto, tempBucketName);
 
             checkImageFilePathIfPathNotExists(responseDto);
-
         }
 
         @Test
@@ -526,15 +527,10 @@ class FileControllerTest {
 
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     new byte[0]
             );
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
-
             mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -551,16 +547,13 @@ class FileControllerTest {
 
         @Test
         public void create_file_temp_status_401_when_user_isnt_authorized() throws Exception {
+
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
             mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -569,24 +562,22 @@ class FileControllerTest {
                             .param("folderPath", folderPath)
                             .contentType(MediaType.MULTIPART_FORM_DATA)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+            ;
         }
 
         @Test
         public void create_file_temp_status_404_when_folder_path_is_not_found() throws Exception {
-
+            String folderPath = UUID.randomUUID().toString();
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
-
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = UUID.randomUUID().toString();
-
             mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -605,15 +596,10 @@ class FileControllerTest {
         public void create_file_temp_status_401_when_user_is_unauthorized() throws Exception {
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
-
             mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
                             .param("fileDescription", fileDescription)
@@ -639,14 +625,10 @@ class FileControllerTest {
         void setUp() throws Exception {
             MockMultipartFile mockFile = new MockMultipartFile(
                     "file",
-                    "testfile.txt",
+                    fileName,
                     "text/plain",
                     "This is the content of the test file".getBytes()
             );
-            String fileDescription = "Test file description";
-            String folderName = "Test folder name";
-            String folderDescription = "Test folder description";
-            String folderPath = "";
 
             MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
                             .file(mockFile)
@@ -671,24 +653,18 @@ class FileControllerTest {
                     FileDto.builder()
                             .fileId(originalFileId)
                             .build());
-
             MvcResult result = mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonDto)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
-                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
-                    .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.fileId",
-                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
-
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
+            verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkResponse(responseDto, bucketName);
             checkFileAndFolderInfoDBData(responseDto, bucketName);
         }
@@ -707,17 +683,12 @@ class FileControllerTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.linksIsValidForMs", isA(Number.class)))
-                    .andExpect(jsonPath("$.linksIsValidForMs", greaterThan(0)))
-                    .andExpect(jsonPath("$.linksToFiles").isMap())
-                    .andExpect(jsonPath("$.fileId",
-                            matchesPattern("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")))
                     .andReturn();
 
             String jsonResponse = result.getResponse().getContentAsString();
-
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
 
+            verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkResponse(responseDto, bucketName);
             checkFileAndFolderInfoDBData(responseDto, bucketName);
         }
@@ -733,7 +704,10 @@ class FileControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonDto)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
         }
 
         @Test
@@ -757,7 +731,7 @@ class FileControllerTest {
         public void save_temp_files_with_status_404_when_file_id_is_not_original_file_id() throws Exception {
 
             Folder folder = fileService.findOriginalFileInfoById(originalFileId).getFolder();
-            List<FileInfo> fileInfos = fileService.getFileInfoByFolderId(folder.getId());
+            List<FileInfo> fileInfos = fileService.getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
             UUID someFileId = fileInfos.stream()
                     .filter(f -> !f.getIsOriginalFile())
                     .findFirst()
@@ -786,7 +760,6 @@ class FileControllerTest {
                             .fileId(originalFileId)
                             .build());
             loginUser2();
-
             mockMvc.perform(patch(SAVE_TEMP_FILE_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonDto)
@@ -825,7 +798,7 @@ class FileControllerTest {
             FileInfoDto fileInfoDto = new FileInfoDto();
             fileInfoDto.setBucketName("testbucketname");
 
-            FileInfo fi = fileService.updateFileInfo(originalFileId, fileInfoDto);
+            fileService.updateFileInfo(originalFileId, fileInfoDto);
             String jsonDto = mapper.writeValueAsString(
                     FileDto.builder()
                             .fileId(originalFileId)
@@ -884,7 +857,9 @@ class FileControllerTest {
 
         @Test
         public void get_all_files_with_status_200() throws Exception {
-            int countOfFiles = uploadAndMoveSomeFileForTest();
+            List<FileResponseDto> uploadedFiles = uploadAndMoveSomeFileForTest();
+            int countOfFiles = uploadedFiles.size();
+
             MvcResult result = mockMvc.perform(get(GET_ALL_FILES_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -903,7 +878,90 @@ class FileControllerTest {
             responseDto.getFiles().forEach(
                     f -> {
                         FileInfo fileInfo = fileService.findOriginalFileInfoById(f.getFileId());
-                        checkResponse(f, fileInfo.getBucketName());
+                        String bucketName = fileInfo.getBucketName();
+                        FileResponseDto fileResponseDto = uploadedFiles.stream()
+                                .filter(uf -> uf.getFileId().equals(f.getFileId()))
+                                .findFirst()
+                                .orElse(null);
+                        if (fileResponseDto == null) {
+                            verifyFileResponseDto(f, fileInfo.getName(),
+                                    null, null, null);
+                        } else {
+                            verifyFileResponseDto(f,
+                                    fileResponseDto.getFileName(),
+                                    fileResponseDto.getFileDescription(),
+                                    fileResponseDto.getFolderName(),
+                                    fileResponseDto.getFolderDescription());
+                        }
+                        checkResponse(f, bucketName);
+                        checkFileAndFolderInfoDBData(f, bucketName);
+                    }
+            );
+        }
+
+        @Test
+        public void get_all_files_with_status_200_for_txt_file_in_old_folder() throws Exception {
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    fileName,
+                    "text/plain",
+                    "This is the content of the test file".getBytes()
+            );
+            MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                            .file(mockFile)
+                            .param("fileDescription", fileDescription)
+                            .param("folderName", folderName)
+                            .param("folderDescription", folderDescription)
+                            .param("folderPath", folderPath)
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            String jsonResponse = result.getResponse().getContentAsString();
+            FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
+            UUID originalFileId = responseDto.getFileId();
+            String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
+            String pathFolder = originalFilePath.substring(0, originalFilePath.lastIndexOf("/")).trim();
+
+            String fileName2 = "testfile2.txt";
+            String fileDescription2 = "Test file description";
+            String folderPath2 = pathFolder;
+            MockMultipartFile mockFile2 = new MockMultipartFile(
+                    "file",
+                    fileName2,
+                    "text/plain",
+                    "This is the content of the test file2".getBytes()
+            );
+            mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                            .file(mockFile2)
+                            .param("fileDescription", fileDescription2)
+                            .param("folderPath", folderPath2)
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isOk());
+
+            MvcResult result3 = mockMvc.perform(get(GET_ALL_FILES_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.files").isArray())
+                    .andExpect(jsonPath("$.pageNumber", is(0)))
+                    .andExpect(jsonPath("$.pageSize", is(10)))
+                    .andExpect(jsonPath("$.totalPages", is(1)))
+                    .andExpect(jsonPath("$.totalElements", is(2)))
+                    .andExpect(jsonPath("$.isFirstPage", is(true)))
+                    .andExpect(jsonPath("$.isLastPage", is(true)))
+                    .andReturn();
+            String jsonResponse3 = result3.getResponse().getContentAsString();
+            FileResponseDtoWithPagination responseDto3 = mapper.readValue(jsonResponse3, FileResponseDtoWithPagination.class);
+            responseDto3.getFiles().forEach(
+                    f -> {
+                        FileInfo fileInfo = fileService.findOriginalFileInfoById(f.getFileId());
+                        String bucketName = fileInfo.getBucketName();
+                        checkResponse(f, bucketName);
+                        checkFileAndFolderInfoDBData(f, bucketName);
                     }
             );
         }
@@ -915,7 +973,10 @@ class FileControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .params(params)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
         }
 
         private static Stream<Arguments> incorrectPaginationArgs() {
@@ -956,7 +1017,10 @@ class FileControllerTest {
             mockMvc.perform(get(GET_ALL_FILES_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtext"))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
         }
 
         @Test

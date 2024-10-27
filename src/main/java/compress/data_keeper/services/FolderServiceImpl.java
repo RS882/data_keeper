@@ -25,6 +25,8 @@ public class FolderServiceImpl implements FolderService {
 
     private String folderPrefix;
 
+    public static final String DEFAULT_FOLDER_PREFIX_NAME = "Folder created in : ";
+
     @Override
     @Transactional
     public Folder getFolder(FolderDto dto, User user, String dirPrefix) {
@@ -50,7 +52,7 @@ public class FolderServiceImpl implements FolderService {
 
     private Folder createFolder(User user) {
         Folder folder = Folder.builder()
-                .name(LocalDateTime.now().toString())
+                .name(getDefaultFolderName())
                 .owner(user)
                 .build();
         return createFolder(folder);
@@ -59,7 +61,7 @@ public class FolderServiceImpl implements FolderService {
     private Folder createFolder(FolderDto dto, User user) {
         String dtoFolderName = dto.getName();
         String folderName = dtoFolderName == null || dtoFolderName.isBlank() ?
-                LocalDateTime.now().toString() : dtoFolderName;
+                getDefaultFolderName() : dtoFolderName;
 
         Folder folder = Folder.builder()
                 .name(folderName)
@@ -80,5 +82,9 @@ public class FolderServiceImpl implements FolderService {
         );
         savedFolder.setPath(folderPath);
         return savedFolder;
+    }
+
+    private String getDefaultFolderName(){
+        return DEFAULT_FOLDER_PREFIX_NAME + LocalDateTime.now();
     }
 }

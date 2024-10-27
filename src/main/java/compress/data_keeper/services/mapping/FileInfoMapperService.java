@@ -1,10 +1,13 @@
 package compress.data_keeper.services.mapping;
 
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
+import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
 import compress.data_keeper.domain.entity.FileInfo;
 import org.mapstruct.*;
 import org.springframework.data.domain.Page;
+
+import java.util.Map;
 
 import static compress.data_keeper.services.utilities.FileCalculators.calculateHash;
 
@@ -43,4 +46,11 @@ public abstract class FileInfoMapperService {
     @Mapping(target = "isFirstPage", source = "fileInfoPage.first")
     @Mapping(target = "isLastPage", source = "fileInfoPage.last")
     public abstract FileResponseDtoWithPagination toFileResponseDtoWithPagination(Page<FileInfo> fileInfoPage);
+
+    @Mapping(source = "fileInfo.id", target = "fileId")
+    @Mapping(source = "fileInfo.name", target = "fileName")
+    @Mapping(source = "fileInfo.description", target = "fileDescription")
+    @Mapping(source = "fileInfo.folder.name", target = "folderName")
+    @Mapping(source = "fileInfo.folder.description", target = "folderDescription")
+    public abstract FileResponseDto toDto(FileInfo fileInfo);
 }

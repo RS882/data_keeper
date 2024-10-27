@@ -34,6 +34,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -115,18 +118,22 @@ public class FileServiceImpl implements FileService {
         });
         Map<String, String> links = getTempFileLinks(paths, bucketName);
         long linkLifeTimeDuration = timeUnitForTempLink.toMillis(urlLifeTime);
+        ZonedDateTime linkIsValidUntil = ZonedDateTime.now()
+                .plus(linkLifeTimeDuration, ChronoUnit.MILLIS);
 
-        UUID originalFileId = fileInfos.stream()
+        FileInfo originalFileInfo = fileInfos.stream()
                 .filter(FileInfo::getIsOriginalFile)
                 .findFirst()
-                .map(FileInfo::getId)
                 .orElse(null);
 
-        return FileResponseDto.builder()
-                .linksToFiles(links)
-                .linksIsValidForMs(linkLifeTimeDuration)
-                .fileId(originalFileId)
-                .build();
+        FileResponseDto responseDto = originalFileInfo != null
+                ? fileInfoMapperService.toDto(originalFileInfo)
+                : new FileResponseDto();
+
+        responseDto.setLinksToFiles(links);
+        responseDto.setLinksIsValidUntil(linkIsValidUntil);
+
+        return responseDto;
     }
 
     @Transactional
@@ -205,14 +212,13 @@ public class FileServiceImpl implements FileService {
                             originalFileId)
             );
         }
-
         String tempFilePath = tempFileInfo.getPath();
         String folderPath = getFolderPathByFilePath(tempFilePath);
         Folder folder = folderService.getFolderByFolderPath(folderPath);
 
         checkUserRights(folder, user);
 
-        List<FileInfo> fileInfos = getFileInfoByFolderId(folder.getId());
+        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
         if (fileInfos.isEmpty()) {
             throw new FileInFolderNotFoundException(folderPath);
         }
@@ -261,7 +267,7 @@ public class FileServiceImpl implements FileService {
         Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
                 .map(fi -> {
                     Folder folder = fi.getFolder();
-                    List<FileInfo> fileInfos = getFileInfoByFolderId(folder.getId());
+                    List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fi.getId());
                     return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());
                 }).collect(Collectors.toSet());
         responseDto.setFiles(fileResponseDtoSet);
@@ -281,13 +287,13 @@ public class FileServiceImpl implements FileService {
         List<FileInfo> fileInfos = dtos.stream()
                 .map(fileInfoMapperService::toFileInfo)
                 .toList();
-
         List<FileInfo> createdFileInfos = fileInfoRepository.saveAll(fileInfos);
-
         createdFileInfos.forEach(fi -> {
             if (fi.getPath() == null || fi.getPath().isBlank()) {
-                Path outputFilePath = Path.of(fi.getFolder().getPath(),
-                        fi.getId() + getFileExtension(fi.getName()));
+                Path outputFilePath = Path.of(
+                        fi.getFolder().getPath(),
+                        fi.getId() + getFileExtension(fi.getName())
+                );
                 fi.setPath(toUnixStylePath(outputFilePath.toString()));
             }
         });
@@ -301,8 +307,8 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public List<FileInfo> getFileInfoByFolderId(UUID folderId) {
-        return fileInfoRepository.findByFolderId(folderId);
+    public List<FileInfo> getFilesInfosByFolderIdAndOriginalFileId(UUID folderId, UUID fileId) {
+        return fileInfoRepository.findByFolderIdAndPathContainsFileId(folderId, fileId);
     }
 
     @Override

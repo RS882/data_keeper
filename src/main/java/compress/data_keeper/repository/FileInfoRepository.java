@@ -13,7 +13,8 @@ import java.util.UUID;
 
 public interface FileInfoRepository extends JpaRepository<FileInfo, UUID> {
 
-    List<FileInfo> findByFolderId(UUID folderId);
+    @Query("SELECT f FROM FileInfo f WHERE f.folder.id = :folderId AND f.path LIKE %:fileId%")
+    List<FileInfo> findByFolderIdAndPathContainsFileId(@Param("folderId") UUID folderId, @Param("fileId") UUID fileId);
 
     void deleteAllByFolderId(UUID folderId);
 
