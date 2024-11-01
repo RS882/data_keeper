@@ -2,10 +2,8 @@ package compress.data_keeper.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
-import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
 import compress.data_keeper.domain.dto.files.FileUpdateDto;
 import compress.data_keeper.domain.dto.users.UserRegistrationDto;
 import compress.data_keeper.domain.entity.FileInfo;
@@ -24,7 +22,6 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,8 +34,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -50,7 +45,6 @@ import static compress.data_keeper.services.FolderServiceImpl.DEFAULT_FOLDER_PRE
 import static compress.data_keeper.services.interfaces.FileService.ORIGINAL_FILE_KEY;
 import static compress.data_keeper.services.utilities.FileUtilities.getFolderPathByFilePath;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -1514,7 +1508,6 @@ class FileControllerTest {
 
         @Test
         public void update_file_info_status_400_when_file_update_dto_is_null() throws Exception {
-
             mockMvc.perform(put(PUT_FILE_INFO_PATH)
                             .contentType(MediaType.APPLICATION_JSON)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
@@ -1522,18 +1515,16 @@ class FileControllerTest {
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.message").isNotEmpty())
                     .andExpect(jsonPath("$.message", isA(String.class)));
-
         }
 
         @Test
-        public void update_file_info_status_400_when_file_is_is_null() throws Exception {
-           FileUpdateDto dto = FileUpdateDto.builder()
+        public void update_file_info_status_400_when_file_id_is_null() throws Exception {
+            FileUpdateDto dto = FileUpdateDto.builder()
                     .fileName(fileName)
                     .fileDescription(fileDescription)
                     .folderName(folderName)
                     .folderDescription(folderDescription)
                     .build();
-
             String jsonDto = mapper.writeValueAsString(dto);
 
             mockMvc.perform(put(PUT_FILE_INFO_PATH)
@@ -1604,6 +1595,106 @@ class FileControllerTest {
                     )
             );
         }
-    }
 
+        @Test
+        public void update_file_info_status_400_when_file_extension_is_wrong() throws Exception {
+            FileUpdateDto dto = FileUpdateDto.builder()
+                    .fileId(uploadFIleDto.getFileId())
+                    .fileName("textfile.test")
+                    .fileDescription(fileDescription)
+                    .folderName(folderName)
+                    .folderDescription(folderDescription)
+                    .build();
+            String jsonDto = mapper.writeValueAsString(dto);
+
+            mockMvc.perform(put(PUT_FILE_INFO_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
+        public void update_file_info_status_401_when_user_is_not_authorized() throws Exception {
+            String newFileName = "new_file.txt";
+            String newFileDescription = "New file description";
+            String newFolderName = "newfolder";
+            String newFolderDescription = "New folder description";
+
+            FileUpdateDto dto = FileUpdateDto.builder()
+                    .fileId(uploadFIleDto.getFileId())
+                    .fileName(newFileName)
+                    .fileDescription(newFileDescription)
+                    .folderName(newFolderName)
+                    .folderDescription(newFolderDescription)
+                    .build();
+            String jsonDto = mapper.writeValueAsString(dto);
+
+            mockMvc.perform(put(PUT_FILE_INFO_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + "testtest"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
+        public void update_file_info_status_403_when_user_dont_have_right() throws Exception {
+            String newFileName = "new_file.txt";
+            String newFileDescription = "New file description";
+            String newFolderName = "newfolder";
+            String newFolderDescription = "New folder description";
+
+            FileUpdateDto dto = FileUpdateDto.builder()
+                    .fileId(uploadFIleDto.getFileId())
+                    .fileName(newFileName)
+                    .fileDescription(newFileDescription)
+                    .folderName(newFolderName)
+                    .folderDescription(newFolderDescription)
+                    .build();
+            String jsonDto = mapper.writeValueAsString(dto);
+
+            loginUser2();
+
+            mockMvc.perform(put(PUT_FILE_INFO_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2))
+                    .andExpect(status().isForbidden())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+
+        @Test
+        public void update_file_info_status_404_when_file_not_found() throws Exception {
+            String newFileName = "new_file.txt";
+            String newFileDescription = "New file description";
+            String newFolderName = "newfolder";
+            String newFolderDescription = "New folder description";
+
+            FileUpdateDto dto = FileUpdateDto.builder()
+                    .fileId(UUID.randomUUID())
+                    .fileName(newFileName)
+                    .fileDescription(newFileDescription)
+                    .folderName(newFolderName)
+                    .folderDescription(newFolderDescription)
+                    .build();
+            String jsonDto = mapper.writeValueAsString(dto);
+
+            mockMvc.perform(put(PUT_FILE_INFO_PATH)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonDto)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").isNotEmpty())
+                    .andExpect(jsonPath("$.message", isA(String.class)));
+        }
+    }
 }
