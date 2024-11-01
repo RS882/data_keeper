@@ -18,18 +18,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @Tag(name = "File Controller", description = "Controller for CRUD operation with file")
 @RequestMapping("/v1/file")
 public interface FileAPI {
 
-     String PAGE_VALUE = "0";
-     String SIZE_VALUE = "10";
-     String SORT_BY = "createdAt";
+    String PAGE_VALUE = "0";
+    String SIZE_VALUE = "10";
+    String SORT_BY = "createdAt";
 
     @Operation(summary = "Upload file to temp bucket",
             description = "This method allows you to upload a file to a temporary bucket.",
@@ -282,4 +285,56 @@ public interface FileAPI {
             })
             Boolean isAsc
     );
+
+    @Operation(summary = "Get link of file by file id when file's owner equals current user or user is admin",
+            description = "This method allows you to get link of file by file id."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Response get successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = FileResponseDtoWithPagination.class))),
+
+            @ApiResponse(responseCode = "400",
+                    description = "Invalid input",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "403",
+                    description = "User doesn't have right for this resource",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "404",
+                    description = "File not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "500",
+                    description = "Server error",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+    })
+    @GetMapping("/{id}")
+    ResponseEntity<FileResponseDto> getFileLinkByFileId(
+            @Valid
+            @PathVariable
+            @Parameter(description = "File ID", example = "24fa7e1f-e9cc-4292-af16-72de8754d10b")
+            @NotNull(message = "File Id can not be null")
+            UUID id,
+            @AuthenticationPrincipal
+            @Parameter(hidden = true)
+            User currentUser
+    );
+
 }

@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 import static compress.data_keeper.services.utilities.PaginationUtilities.getPageable;
 
 @RestController
@@ -41,7 +43,12 @@ public class FileController implements FileAPI {
             Long id, User currentUser,
             int page, int size, String sortBy, Boolean isAsc) {
         return ResponseEntity.ok(fileService.findFilesByUserId(
-                id,currentUser,
+                id, currentUser,
                 getPageable(page, size, sortBy, isAsc)));
+    }
+
+    @Override
+    public ResponseEntity<FileResponseDto> getFileLinkByFileId(UUID id, User currentUser) {
+        return ResponseEntity.ok(fileService.findFileByFileId(id, currentUser));
     }
 }

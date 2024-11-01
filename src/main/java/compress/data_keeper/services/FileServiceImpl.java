@@ -12,7 +12,7 @@ import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.bad_requeat.exceptions.BadFileBucketName;
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderNotFoundException;
-import compress.data_keeper.exception_handler.not_found.exceptions.FileInfoNotFound;
+import compress.data_keeper.exception_handler.not_found.exceptions.FileInfoNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FileInfoRepository;
 import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
@@ -34,7 +34,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -261,6 +260,16 @@ public class FileServiceImpl implements FileService {
         return getFileResponseDtoWithPagination(filesInfos);
     }
 
+    @Override
+    public FileResponseDto findFileByFileId(UUID fileId, User currentUser) {
+        FileInfo fileInfo = fileInfoRepository.findById(fileId)
+                .orElseThrow(() -> new FileInfoNotFoundException(fileId));
+        Folder fileFolder = fileInfo.getFolder();
+        checkUserRights(fileFolder, currentUser);
+        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
+        return getFileResponseDtoByFileInfos(fileInfos, fileInfo.getBucketName());
+    }
+
     private FileResponseDtoWithPagination getFileResponseDtoWithPagination(Page<FileInfo> filesInfos) {
         FileResponseDtoWithPagination responseDto =
                 fileInfoMapperService.toFileResponseDtoWithPagination(filesInfos);
@@ -303,7 +312,7 @@ public class FileServiceImpl implements FileService {
     @Override
     public FileInfo findOriginalFileInfoById(UUID id) {
         return fileInfoRepository.findByIdAndIsOriginalFileTrue(id)
-                .orElseThrow(() -> new FileInfoNotFound(id));
+                .orElseThrow(() -> new FileInfoNotFoundException(id));
     }
 
     @Override

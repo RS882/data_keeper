@@ -25,6 +25,8 @@ public interface FileService {
 
     FileResponseDtoWithPagination findFilesByUserId(Long userId, User currentUser, Pageable pageable);
 
+    FileResponseDto findFileByFileId(UUID fileId, User currentUser);
+
     FileInfo createFileInfo(FileInfoDto dto);
 
     List<FileInfo> createFileInfo(List<FileInfoDto> dtos);

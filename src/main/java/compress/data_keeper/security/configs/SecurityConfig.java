@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/v1/file/save").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/file/all").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/v1/file/all/user/{id}").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/v1/file/{id}").authenticated()
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(validationFilter, UsernamePasswordAuthenticationFilter.class)
