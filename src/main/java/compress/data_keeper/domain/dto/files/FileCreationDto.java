@@ -17,11 +17,11 @@ public class FileCreationDto {
     private MultipartFile file;
 
     @Schema(description = "Description of file", example = "My best photo")
-    @Size(max = 200, message = "Folder description must be no more than 200 characters.")
+    @Size(max = 200, message = "File description must be no more than 200 characters.")
     private String fileDescription;
 
     @Schema(description = "Name of folder", example = "My invoices")
-    @Size(max = 20, message = "Folder name must be between 3 and 20 characters")
+    @Size(max = 20, message = "Folder name must be no more than 20 characters")
     private String folderName;
 
     @Schema(description = "Description of folder", example = "In this folder I saved my invoices from the dentist.")

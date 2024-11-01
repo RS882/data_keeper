@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -349,7 +350,8 @@ public interface FileAPI {
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
                                     oneOf = {
-                                            ValidationErrorsDto.class
+                                            ValidationErrorsDto.class,
+                                            ResponseMessageDto.class
                                     }
                             ),
                             examples = {
@@ -364,6 +366,10 @@ public interface FileAPI {
                                                     "    }\n" +
                                                     "  ]\n" +
                                                     "}"
+                                    ),
+                                    @ExampleObject(
+                                            name = "Bad value",
+                                            value = "{\"message\": \"Dto is null\"}"
                                     )
                             })),
             @ApiResponse(responseCode = "401",
@@ -391,13 +397,15 @@ public interface FileAPI {
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
     })
+    @Validated
     @PutMapping("/update/info")
     ResponseEntity<FileResponseDto> updateFileInfo(
             @Valid
+            @NotNull
+            @org.springframework.web.bind.annotation.RequestBody
             FileUpdateDto fileUpdateDto,
             @AuthenticationPrincipal
             @Parameter(hidden = true)
             User currentUser
     );
-
 }

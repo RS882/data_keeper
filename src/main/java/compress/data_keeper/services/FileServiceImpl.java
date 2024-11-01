@@ -8,6 +8,7 @@ import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.bad_requeat.exceptions.BadFileBucketName;
+import compress.data_keeper.exception_handler.bad_requeat.exceptions.BadFileExtensionException;
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderNotFoundException;
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInfoNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
@@ -276,24 +277,33 @@ public class FileServiceImpl implements FileService {
                 .orElseThrow(() -> new FileInfoNotFoundException(fileId));
         Folder fileFolder = fileInfo.getFolder();
         checkUserRights(fileFolder, currentUser);
-
-        updateFolder(fileFolder, fileUpdateDto);
-        updateFileInfo(fileInfo, fileUpdateDto);
+        if (fileUpdateDto.getFileName() != null) {
+            checkFileExtension(fileUpdateDto.getFileName(), fileInfo.getName());
+        }
+        updateFolderInformation(fileFolder, fileUpdateDto);
+        updateFileInformation(fileInfo, fileUpdateDto);
 
         List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
         return getFileResponseDtoByFileInfos(fileInfos, fileInfo.getBucketName());
     }
 
-    private void updateFolder(Folder folder, FileUpdateDto dto) {
-        if (dto.getFolderName() != null) {
-            folder.setName(dto.getFolderName());
-        }
-        if (dto.getFolderDescription() != null) {
-            folder.setDescription(dto.getFolderDescription());
+    @Override
+    @Transactional
+    public FileInfo updateFileInfo(UUID fileId, FileInfoDto dto) {
+        FileInfo fileInfo = findOriginalFileInfoById(fileId);
+        fileInfoMapperService.updateFileInfo(dto, fileInfo);
+        return fileInfo;
+    }
+
+    private void checkFileExtension(String newFileName, String currentFileName) {
+        String ex1 = getFileExtension(newFileName);
+        String ex2 = getFileExtension(currentFileName);
+        if (!ex1.equalsIgnoreCase(ex2)) {
+            throw new BadFileExtensionException(getFileExtension(newFileName));
         }
     }
 
-    private void updateFileInfo(FileInfo fileInfo, FileUpdateDto dto) {
+    private void updateFileInformation(FileInfo fileInfo, FileUpdateDto dto) {
         if (dto.getFileName() != null) {
             fileInfo.setName(dto.getFileName());
             dataStorageService.updateOriginalFileName(
@@ -303,6 +313,15 @@ public class FileServiceImpl implements FileService {
         }
         if (dto.getFileDescription() != null) {
             fileInfo.setDescription(dto.getFileDescription());
+        }
+    }
+
+    private void updateFolderInformation(Folder folder, FileUpdateDto dto) {
+        if (dto.getFolderName() != null) {
+            folder.setName(dto.getFolderName());
+        }
+        if (dto.getFolderDescription() != null) {
+            folder.setDescription(dto.getFolderDescription());
         }
     }
 
@@ -361,11 +380,4 @@ public class FileServiceImpl implements FileService {
         fileInfoRepository.deleteAllByFolderId(folderId);
     }
 
-    @Override
-    @Transactional
-    public FileInfo updateFileInfo(UUID fileId, FileInfoDto dto) {
-        FileInfo fileInfo = findOriginalFileInfoById(fileId);
-        fileInfoMapperService.updateFileInfo(dto, fileInfo);
-        return fileInfo;
-    }
 }
