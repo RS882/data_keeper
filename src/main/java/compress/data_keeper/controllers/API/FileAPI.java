@@ -330,7 +330,7 @@ public interface FileAPI {
             @Valid
             @PathVariable
             @Parameter(description = "File ID", example = "24fa7e1f-e9cc-4292-af16-72de8754d10b")
-            @NotNull(message = "File Id can not be null")
+            @NotNull(message = "File Id can not be empty")
             UUID id,
             @AuthenticationPrincipal
             @Parameter(hidden = true)
