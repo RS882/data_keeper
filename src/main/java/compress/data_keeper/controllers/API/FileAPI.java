@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -397,13 +398,61 @@ public interface FileAPI {
                             schema = @Schema(implementation = ResponseMessageDto.class)
                     )),
     })
-    @Validated
     @PutMapping("/update/info")
     ResponseEntity<FileResponseDto> updateFileInfo(
             @Valid
             @NotNull
             @org.springframework.web.bind.annotation.RequestBody
             FileUpdateDto fileUpdateDto,
+            @AuthenticationPrincipal
+            @Parameter(hidden = true)
+            User currentUser
+    );
+
+    @Operation(summary = "Delete file by file id when file owner equals current user or user is admin",
+            description = "This method allows you to delete file by file id."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204",description = "File deleted successful"),
+            @ApiResponse(responseCode = "400",
+                    description = "Invalid input",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "403",
+                    description = "User doesn't have right for this resource",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "404",
+                    description = "File not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "500",
+                    description = "Server error",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+    })
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteFileById(
+            @Valid
+            @PathVariable
+            @Parameter(description = "File ID", example = "24fa7e1f-e9cc-4292-af16-72de8754d10b")
+            @NotNull(message = "File Id can not be empty")
+            UUID id,
             @AuthenticationPrincipal
             @Parameter(hidden = true)
             User currentUser

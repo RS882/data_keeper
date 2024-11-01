@@ -53,4 +53,9 @@ public class FileController implements FileAPI {
     public ResponseEntity<FileResponseDto> updateFileInfo(FileUpdateDto fileUpdateDto, User currentUser) {
         return ResponseEntity.ok(fileService.updateFileInfo(fileUpdateDto, currentUser));
     }
+
+    @Override
+    public void deleteFileById(UUID id, User currentUser) {
+
+    }
 }
