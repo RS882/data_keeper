@@ -4,9 +4,11 @@ import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.FileResponseDto;
 import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
 import compress.data_keeper.domain.entity.FileInfo;
+import compress.data_keeper.domain.entity.Folder;
 import org.mapstruct.*;
 import org.springframework.data.domain.Page;
 
+import java.io.InputStream;
 import java.util.Map;
 
 import static compress.data_keeper.services.utilities.FileCalculators.calculateHash;
@@ -54,3 +56,4 @@ public abstract class FileInfoMapperService {
     @Mapping(source = "fileInfo.folder.description", target = "folderDescription")
     public abstract FileResponseDto toDto(FileInfo fileInfo);
 }
+

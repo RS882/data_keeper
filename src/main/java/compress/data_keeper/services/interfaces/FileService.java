@@ -1,10 +1,7 @@
 package compress.data_keeper.services.interfaces;
 
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
-import compress.data_keeper.domain.dto.files.FileCreationDto;
-import compress.data_keeper.domain.dto.files.FileDto;
-import compress.data_keeper.domain.dto.files.FileResponseDto;
-import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
+import compress.data_keeper.domain.dto.files.*;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.User;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +23,8 @@ public interface FileService {
     FileResponseDtoWithPagination findFilesByUserId(Long userId, User currentUser, Pageable pageable);
 
     FileResponseDto findFileByFileId(UUID fileId, User currentUser);
+
+    FileResponseDto updateFileInfo(FileUpdateDto fileUpdateDto, User currentUser);
 
     FileInfo createFileInfo(FileInfoDto dto);
 

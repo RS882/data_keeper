@@ -1,10 +1,7 @@
 package compress.data_keeper.controllers.API;
 
 import compress.data_keeper.domain.dto.ResponseMessageDto;
-import compress.data_keeper.domain.dto.files.FileCreationDto;
-import compress.data_keeper.domain.dto.files.FileDto;
-import compress.data_keeper.domain.dto.files.FileResponseDto;
-import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
+import compress.data_keeper.domain.dto.files.*;
 import compress.data_keeper.domain.entity.User;
 import compress.data_keeper.exception_handler.dto.ValidationErrorsDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -332,6 +329,72 @@ public interface FileAPI {
             @Parameter(description = "File ID", example = "24fa7e1f-e9cc-4292-af16-72de8754d10b")
             @NotNull(message = "File Id can not be empty")
             UUID id,
+            @AuthenticationPrincipal
+            @Parameter(hidden = true)
+            User currentUser
+    );
+
+    @Operation(summary = "Update file information when user is owner this file or admin",
+            description = "This method allows you to update file information.",
+            requestBody = @RequestBody(
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = FileDto.class)))
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "File information updated successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = FileResponseDto.class))),
+
+            @ApiResponse(responseCode = "400", description = "Request is wrong",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(
+                                    oneOf = {
+                                            ValidationErrorsDto.class
+                                    }
+                            ),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "Validation Errors",
+                                            value = "{\n" +
+                                                    "  \"errors\": [\n" +
+                                                    "    {\n" +
+                                                    "      \"field\": \"FileUpdateDto.fileId\",\n" +
+                                                    "      \"message\": \"Id cannot be null\",\n" +
+                                                    "      \"rejectedValue\": \"rt\"\n" +
+                                                    "    }\n" +
+                                                    "  ]\n" +
+                                                    "}"
+                                    )
+                            })),
+            @ApiResponse(responseCode = "401",
+                    description = "Unauthorized user",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "403",
+                    description = "User doesn't have right for this resource",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+            @ApiResponse(responseCode = "500",
+                    description = "Server error",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseMessageDto.class)
+                    )),
+    })
+    @PutMapping("/update/info")
+    ResponseEntity<FileResponseDto> updateFileInfo(
+            @Valid
+            FileUpdateDto fileUpdateDto,
             @AuthenticationPrincipal
             @Parameter(hidden = true)
             User currentUser

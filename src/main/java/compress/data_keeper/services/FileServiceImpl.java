@@ -2,10 +2,7 @@ package compress.data_keeper.services;
 
 import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
-import compress.data_keeper.domain.dto.files.FileCreationDto;
-import compress.data_keeper.domain.dto.files.FileDto;
-import compress.data_keeper.domain.dto.files.FileResponseDto;
-import compress.data_keeper.domain.dto.files.FileResponseDtoWithPagination;
+import compress.data_keeper.domain.dto.files.*;
 import compress.data_keeper.domain.dto.folders.FolderDto;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
@@ -266,8 +263,47 @@ public class FileServiceImpl implements FileService {
                 .orElseThrow(() -> new FileInfoNotFoundException(fileId));
         Folder fileFolder = fileInfo.getFolder();
         checkUserRights(fileFolder, currentUser);
+
         List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
         return getFileResponseDtoByFileInfos(fileInfos, fileInfo.getBucketName());
+    }
+
+    @Override
+    @Transactional
+    public FileResponseDto updateFileInfo(FileUpdateDto fileUpdateDto, User currentUser) {
+        UUID fileId = fileUpdateDto.getFileId();
+        FileInfo fileInfo = fileInfoRepository.findById(fileId)
+                .orElseThrow(() -> new FileInfoNotFoundException(fileId));
+        Folder fileFolder = fileInfo.getFolder();
+        checkUserRights(fileFolder, currentUser);
+
+        updateFolder(fileFolder, fileUpdateDto);
+        updateFileInfo(fileInfo, fileUpdateDto);
+
+        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
+        return getFileResponseDtoByFileInfos(fileInfos, fileInfo.getBucketName());
+    }
+
+    private void updateFolder(Folder folder, FileUpdateDto dto) {
+        if (dto.getFolderName() != null) {
+            folder.setName(dto.getFolderName());
+        }
+        if (dto.getFolderDescription() != null) {
+            folder.setDescription(dto.getFolderDescription());
+        }
+    }
+
+    private void updateFileInfo(FileInfo fileInfo, FileUpdateDto dto) {
+        if (dto.getFileName() != null) {
+            fileInfo.setName(dto.getFileName());
+            dataStorageService.updateOriginalFileName(
+                    fileInfo.getBucketName(),
+                    fileInfo.getPath(),
+                    dto.getFileName());
+        }
+        if (dto.getFileDescription() != null) {
+            fileInfo.setDescription(dto.getFileDescription());
+        }
     }
 
     private FileResponseDtoWithPagination getFileResponseDtoWithPagination(Page<FileInfo> filesInfos) {

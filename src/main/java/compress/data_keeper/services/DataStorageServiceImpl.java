@@ -99,6 +99,36 @@ public class DataStorageServiceImpl implements DataStorageService {
     }
 
     @Override
+    public void updateObjectMetadata(String bucketName, String objectName, Map<String, String> newMetaData) {
+        try {
+            InputStream objectStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .build()
+            );
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .stream(objectStream, objectStream.available(), -1)
+                            .userMetadata(newMetaData)
+                            .build()
+            );
+            objectStream.close();
+        } catch (Exception e) {
+            throw new ServerIOException("Error updating metadata: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateOriginalFileName(String bucketName, String objectName, String newFileName) {
+        Map<String, String> metaData = new HashMap<>();
+        metaData.put(USER_METADATA_PREFIX + ORIGINAL_FILENAME, newFileName);
+        updateObjectMetadata(bucketName, objectName, metaData);
+    }
+
+    @Override
     public ObjectWriteResponse moveFile(String currentFilePath, String newFilePath) {
         checkAndCreateBucket(newBucketName, true);
         try {

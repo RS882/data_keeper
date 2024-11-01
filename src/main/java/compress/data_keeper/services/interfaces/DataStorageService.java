@@ -20,6 +20,10 @@ public interface DataStorageService {
 
     ObjectWriteResponse uploadFIle(InputStreamDto inputStreamDto, String outputFile);
 
+    void updateObjectMetadata(String bucketName, String objectName, Map<String, String> newMetaData);
+
+    void updateOriginalFileName(String bucketName, String objectName, String newFileName);
+
     ObjectWriteResponse moveFile(String currentFilePath, String newFilePath);
 
     void checkAndCreateBucket(String checkedBucketName, boolean isObjectLock);
