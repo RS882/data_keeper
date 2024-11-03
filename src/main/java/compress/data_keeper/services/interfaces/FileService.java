@@ -36,5 +36,8 @@ public interface FileService {
 
     void deleteAllFileInfosByFolderId(UUID folderId);
 
+    void deleteFileById(UUID id, User currentUser);
+
     FileInfo updateFileInfo(UUID fileId, FileInfoDto dto);
+
 }

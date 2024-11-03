@@ -38,6 +38,8 @@ public interface DataStorageService {
 
     void deleteObject(String objectPath);
 
+    void deleteObject(String objectPath, String bucketName);
+
     boolean isObjectExist(String objectPath, String bucketName);
 
     void deleteObjectsFromBucket(String bucketName, List<String> objectsNames);

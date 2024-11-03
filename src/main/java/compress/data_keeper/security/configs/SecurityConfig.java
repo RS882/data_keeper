@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/file/all/user/{id}").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/file/{id}").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/v1/file/update/info").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/v1/file/{id}").authenticated()
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(validationFilter, UsernamePasswordAuthenticationFilter.class)

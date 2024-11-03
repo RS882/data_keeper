@@ -6,8 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
 
-import javax.xml.transform.sax.SAXResult;
-
 @Data
 @Builder
 @Schema(description = "DTO with folder information")

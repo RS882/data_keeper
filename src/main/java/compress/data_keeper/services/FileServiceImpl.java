@@ -4,6 +4,7 @@ import compress.data_keeper.domain.dto.InputStreamDto;
 import compress.data_keeper.domain.dto.file_info.FileInfoDto;
 import compress.data_keeper.domain.dto.files.*;
 import compress.data_keeper.domain.dto.folders.FolderDto;
+import compress.data_keeper.domain.entity.EntityInfo;
 import compress.data_keeper.domain.entity.FileInfo;
 import compress.data_keeper.domain.entity.Folder;
 import compress.data_keeper.domain.entity.User;
@@ -260,8 +261,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponseDto findFileByFileId(UUID fileId, User currentUser) {
-        FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                .orElseThrow(() -> new FileInfoNotFoundException(fileId));
+        FileInfo fileInfo = findOriginalFileInfoById(fileId);
         Folder fileFolder = fileInfo.getFolder();
         checkUserRights(fileFolder, currentUser);
 
@@ -273,8 +273,7 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public FileResponseDto updateFileInfo(FileUpdateDto fileUpdateDto, User currentUser) {
         UUID fileId = fileUpdateDto.getFileId();
-        FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                .orElseThrow(() -> new FileInfoNotFoundException(fileId));
+        FileInfo fileInfo = findOriginalFileInfoById(fileId);
         Folder fileFolder = fileInfo.getFolder();
         checkUserRights(fileFolder, currentUser);
         if (fileUpdateDto.getFileName() != null) {
@@ -380,4 +379,16 @@ public class FileServiceImpl implements FileService {
         fileInfoRepository.deleteAllByFolderId(folderId);
     }
 
+    @Override
+    @Transactional
+    public void deleteFileById(UUID id, User currentUser) {
+        FileInfo fileInfo = findOriginalFileInfoById(id);
+        Folder fileFolder = fileInfo.getFolder();
+        checkUserRights(fileFolder, currentUser);
+
+        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), id);
+        fileInfoRepository.deleteAll(fileInfos);
+        List<String> filesPaths = fileInfos.stream().map(EntityInfo::getPath).toList();
+        dataStorageService.deleteObjectsFromBucket(fileInfo.getBucketName(), filesPaths);
+    }
 }

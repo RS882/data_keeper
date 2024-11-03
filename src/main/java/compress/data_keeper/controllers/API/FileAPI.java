@@ -413,7 +413,9 @@ public interface FileAPI {
             description = "This method allows you to delete file by file id."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204",description = "File deleted successful"),
+            @ApiResponse(responseCode = "204",
+                    description = "File deleted successful"
+            ),
             @ApiResponse(responseCode = "400",
                     description = "Invalid input",
                     content = @Content(

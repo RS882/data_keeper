@@ -304,10 +304,15 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public void deleteObject(String objectPath) {
+        deleteObject(objectPath,tempBucketName);
+    }
+
+    @Override
+    public void deleteObject(String objectPath, String bucketName) {
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
-                            .bucket(tempBucketName)
+                            .bucket(bucketName)
                             .object(objectPath)
                             .build());
             log.info("Object deleted successful : {}", objectPath);

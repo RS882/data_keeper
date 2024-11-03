@@ -56,6 +56,6 @@ public class FileController implements FileAPI {
 
     @Override
     public void deleteFileById(UUID id, User currentUser) {
-
+        fileService.deleteFileById(id, currentUser);
     }
 }
