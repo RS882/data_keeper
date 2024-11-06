@@ -13,6 +13,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  scheduling:
+    enabled: false
 server:
   servlet:
     context-path: /api
@@ -33,7 +35,8 @@ minio:
 key:
   access: ${ACCESS_SECRET}
   refresh: ${REFRESH_SECRET}
-
+scheduler:
+  interval: ${SECOND_INTERVAL:2}
 
 
 

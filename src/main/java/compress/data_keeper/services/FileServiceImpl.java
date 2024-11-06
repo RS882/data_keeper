@@ -33,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -212,7 +213,7 @@ public class FileServiceImpl implements FileService {
 
         checkUserRights(folder, user);
 
-        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
+        List<FileInfo> fileInfos = findFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
         if (fileInfos.isEmpty()) {
             throw new FileInFolderNotFoundException(folder.getId());
         }
@@ -262,7 +263,7 @@ public class FileServiceImpl implements FileService {
         Folder fileFolder = fileInfo.getFolder();
         checkUserRights(fileFolder, currentUser);
 
-        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
+        List<FileInfo> fileInfos = findFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
         return getFileResponseDtoByFileInfos(fileInfos, fileInfo.getBucketName());
     }
 
@@ -279,7 +280,7 @@ public class FileServiceImpl implements FileService {
         updateFolderInformation(fileFolder, fileUpdateDto);
         updateFileInformation(fileInfo, fileUpdateDto);
 
-        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
+        List<FileInfo> fileInfos = findFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), fileId);
         return getFileResponseDtoByFileInfos(fileInfos, fileInfo.getBucketName());
     }
 
@@ -330,7 +331,7 @@ public class FileServiceImpl implements FileService {
         Set<FileResponseDto> fileResponseDtoSet = filesInfos.getContent().stream()
                 .map(fi -> {
                     Folder folder = fi.getFolder();
-                    List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fi.getId());
+                    List<FileInfo> fileInfos = findFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fi.getId());
                     return getFileResponseDtoByFileInfos(fileInfos, folder.getBucketName());
                 }).collect(Collectors.toSet());
         responseDto.setFiles(fileResponseDtoSet);
@@ -370,7 +371,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public List<FileInfo> getFilesInfosByFolderIdAndOriginalFileId(UUID folderId, UUID fileId) {
+    public List<FileInfo> findFilesInfosByFolderIdAndOriginalFileId(UUID folderId, UUID fileId) {
         return fileInfoRepository.findByFolderIdAndPathContainsFileId(folderId, fileId);
     }
 
@@ -386,9 +387,21 @@ public class FileServiceImpl implements FileService {
         Folder fileFolder = fileInfo.getFolder();
         checkUserRights(fileFolder, currentUser);
 
-        List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), id);
+        List<FileInfo> fileInfos = findFilesInfosByFolderIdAndOriginalFileId(fileFolder.getId(), id);
         fileInfoRepository.deleteAll(fileInfos);
         List<String> filesPaths = fileInfos.stream().map(EntityInfo::getPath).toList();
         dataStorageService.deleteObjectsFromBucket(fileInfo.getBucketName(), filesPaths);
+    }
+
+    @Override
+    public void deleteFilesInfos(List<FileInfo> fileInfos) {
+        fileInfoRepository.deleteAll(fileInfos);
+    }
+
+    @Override
+    public List<FileInfo> findOldTempFiles(String bucketName, long secondsInterval) {
+         return fileInfoRepository.findOldTempFilesInfos(
+                 bucketName,
+                 LocalDateTime.now().minusSeconds(secondsInterval));
     }
 }

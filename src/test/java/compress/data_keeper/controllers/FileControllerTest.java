@@ -289,7 +289,7 @@ class FileControllerTest {
         assertEquals(folder.getOwner().getId(), currentUserId1);
         assertEquals(folder.getBucketName(), bucketName);
 
-        List<FileInfo> filesInfos = fileService.getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
+        List<FileInfo> filesInfos = fileService.findFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
         assertNotNull(filesInfos);
         filesInfos.forEach(f -> {
             assertNotNull(f);
@@ -777,7 +777,7 @@ class FileControllerTest {
         public void save_temp_files_with_status_404_when_file_id_is_not_original_file_id() throws Exception {
 
             Folder folder = fileService.findOriginalFileInfoById(originalFileId).getFolder();
-            List<FileInfo> fileInfos = fileService.getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
+            List<FileInfo> fileInfos = fileService.findFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
             UUID someFileId = fileInfos.stream()
                     .filter(f -> !f.getIsOriginalFile())
                     .findFirst()
@@ -1776,7 +1776,7 @@ class FileControllerTest {
         public void delete_file_status_204() throws Exception {
             UUID fileId = uploadFIleDto.getFileId();
             Folder folder = fileService.findOriginalFileInfoById(fileId).getFolder();
-            List<FileInfo> filesInfos = fileService.getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fileId);
+            List<FileInfo> filesInfos = fileService.findFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fileId);
 
             mockMvc.perform(delete(DELETE_FILE_BY_ID_PATH, fileId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
@@ -1793,7 +1793,7 @@ class FileControllerTest {
 
             UUID fileId = uploadFIleDto.getFileId();
             Folder folder = fileService.findOriginalFileInfoById(fileId).getFolder();
-            List<FileInfo> filesInfos = fileService.getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fileId);
+            List<FileInfo> filesInfos = fileService.findFilesInfosByFolderIdAndOriginalFileId(folder.getId(), fileId);
 
             loginAdmin();
             mockMvc.perform(delete(DELETE_FILE_BY_ID_PATH, fileId)

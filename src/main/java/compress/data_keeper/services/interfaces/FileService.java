@@ -32,11 +32,15 @@ public interface FileService {
 
     FileInfo findOriginalFileInfoById(UUID id);
 
-    List<FileInfo> getFilesInfosByFolderIdAndOriginalFileId(UUID folderId, UUID fileId);
+    List<FileInfo> findFilesInfosByFolderIdAndOriginalFileId(UUID folderId, UUID fileId);
 
     void deleteAllFileInfosByFolderId(UUID folderId);
 
     void deleteFileById(UUID id, User currentUser);
+
+    void deleteFilesInfos(List<FileInfo> fileInfos);
+
+    List<FileInfo> findOldTempFiles(String bucketName, long secondsInterval);
 
     FileInfo updateFileInfo(UUID fileId, FileInfoDto dto);
 
