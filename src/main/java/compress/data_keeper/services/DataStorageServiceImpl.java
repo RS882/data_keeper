@@ -281,30 +281,13 @@ public class DataStorageServiceImpl implements DataStorageService {
 
     @Override
     public String createFolderPath(String folderUUID, Long userId, String folderPrefix) {
-
-//        checkAndCreateBucket(bucketName);
-//
         String path = Path.of(folderPrefix, userId.toString(), folderUUID).toString();
-//
-//        try {
-//            ObjectWriteResponse createdFolder = minioClient.putObject(
-//                    PutObjectArgs.builder()
-//                            .bucket(bucketName)
-//                            .object(toUnixStylePath(path))
-//                            .stream(
-//                                    new ByteArrayInputStream(new byte[]{}), 0, -1)
-//                            .build());
-//
-//            return toUnixStylePath(createdFolder.object());
         return toUnixStylePath(path);
-//        } catch (Exception e) {
-//            throw new ServerIOException(e.getMessage());
-//        }
     }
 
     @Override
     public void deleteObject(String objectPath) {
-        deleteObject(objectPath,tempBucketName);
+        deleteObject(objectPath, tempBucketName);
     }
 
     @Override

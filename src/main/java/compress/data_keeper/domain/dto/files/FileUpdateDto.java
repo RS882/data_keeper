@@ -32,4 +32,8 @@ public class FileUpdateDto {
     @Schema(description = "Description of folder", example = "In this folder I saved my invoices from the dentist.")
     @Size(max = 200, message = "Folder description must be no more than 200 characters.")
     private String folderDescription;
+
+    @Schema(description = "Is folder protected from deleting or not", examples = {"false", "true"})
+    @Builder.Default
+    private Boolean isFolderProtected = false;
 }

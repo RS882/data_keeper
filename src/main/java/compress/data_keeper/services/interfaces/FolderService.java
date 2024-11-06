@@ -6,7 +6,7 @@ import compress.data_keeper.domain.entity.User;
 
 public interface FolderService {
 
-    Folder getFolder(FolderDto dto, User user, String dirPrefix);
+    Folder createNewFolder(FolderDto dto, User user, String dirPrefix);
 
     Folder getFolderByFolderPath(String path);
 }

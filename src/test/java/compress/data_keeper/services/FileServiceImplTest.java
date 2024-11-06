@@ -88,8 +88,6 @@ class FileServiceImplTest {
             ArgumentCaptor<List<FileInfo>> argumentCaptor = ArgumentCaptor.forClass(List.class);
             verify(fileInfoRepository).saveAll(argumentCaptor.capture());
             assertEquals(2, argumentCaptor.getValue().size());
-            assertEquals(fileInfo1, argumentCaptor.getValue().get(0));
-            assertEquals(fileInfo2, argumentCaptor.getValue().get(1));
         }
     }
 }

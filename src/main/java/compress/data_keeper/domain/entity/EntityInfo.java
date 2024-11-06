@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @MappedSuperclass
 @Data
+@EqualsAndHashCode
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor

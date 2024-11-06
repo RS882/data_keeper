@@ -259,12 +259,32 @@ class FileControllerTest {
         });
     }
 
-    private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
-        UUID originalFileId = responseDto.getFileId();
-        String originalFilePath = fileService.findOriginalFileInfoById(originalFileId).getPath();
+    private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName,
+                                              boolean isTemp, boolean isFolderProtected) {
+        Folder folder = getFolderByFileResponseDto(responseDto);
+        checkFileAndFolderInfoDBDataWithoutFolderIsTemp(folder, bucketName, responseDto.getFileId());
+        assertEquals(folder.isTemp(), isTemp);
+        assertEquals(folder.isProtected(), isFolderProtected);
+    }
 
-        String folderPath = getFolderPathByFilePath(originalFilePath);
-        Folder folder = folderService.getFolderByFolderPath(folderPath);
+    private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName, boolean isTemp) {
+        Folder folder = getFolderByFileResponseDto(responseDto);
+        checkFileAndFolderInfoDBDataWithoutFolderIsTemp(folder, bucketName, responseDto.getFileId());
+        assertEquals(folder.isTemp(), isTemp);
+    }
+
+    private void checkFileAndFolderInfoDBData(FileResponseDto responseDto, String bucketName) {
+        Folder folder = getFolderByFileResponseDto(responseDto);
+        checkFileAndFolderInfoDBDataWithoutFolderIsTemp(folder, bucketName, responseDto.getFileId());
+    }
+
+    private Folder getFolderByFileResponseDto(FileResponseDto responseDto) {
+
+        FileInfo fileInfo = fileService.findOriginalFileInfoById(responseDto.getFileId());
+        return fileInfo.getFolder();
+    }
+
+    private void checkFileAndFolderInfoDBDataWithoutFolderIsTemp(Folder folder, String bucketName, UUID originalFileId) {
         assertNotNull(folder);
         assertEquals(folder.getOwner().getId(), currentUserId1);
         assertEquals(folder.getBucketName(), bucketName);
@@ -284,7 +304,8 @@ class FileControllerTest {
             String folderName,
             String folderDescription,
             String folderPath,
-            String token) throws Exception {
+            String token,
+            boolean isFolderProtected) throws Exception {
         MockMultipartFile mockFile = new MockMultipartFile(
                 "file",
                 fileName,
@@ -297,6 +318,7 @@ class FileControllerTest {
                         .param("folderName", folderName)
                         .param("folderDescription", folderDescription)
                         .param("folderPath", folderPath)
+                        .param("isFolderProtected", String.valueOf(isFolderProtected))
                         .contentType(MediaType.MULTIPART_FORM_DATA)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
@@ -338,7 +360,8 @@ class FileControllerTest {
                     "Test folder name" + i,
                     "Test folder description" + i,
                     "",
-                    token);
+                    token,
+                    random.nextBoolean());
             if (random.nextBoolean()) {
                 FileResponseDto movedDto = moveTempFileInBucket(dto.getFileId(), token);
                 dtoList.add(movedDto);
@@ -399,7 +422,36 @@ class FileControllerTest {
 
             verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkResponse(responseDto, tempBucketName);
-            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName, true, false);
+        }
+
+        @Test
+        public void create_file_temp_status_200_for_new_txt_file_in_new_dir_when_folder_is_protected() throws Exception {
+
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    fileName,
+                    "text/plain",
+                    "This is the content of the test file".getBytes()
+            );
+            MvcResult result = mockMvc.perform(multipart(FILE_TEMP_LOAD_PATH)
+                            .file(mockFile)
+                            .param("fileDescription", fileDescription)
+                            .param("folderName", folderName)
+                            .param("folderDescription", folderDescription)
+                            .param("folderPath", folderPath)
+                            .param("isFolderProtected", "true")
+                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andReturn();
+            String jsonResponse = result.getResponse().getContentAsString();
+            FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
+
+            verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
+            checkResponse(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName, true, true);
         }
 
         @Test
@@ -424,7 +476,7 @@ class FileControllerTest {
             FileResponseDto responseDto = mapper.readValue(jsonResponse, FileResponseDto.class);
             verifyFileResponseDto(responseDto, fileName, null, null, null);
             checkResponse(responseDto, tempBucketName);
-            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName, true);
         }
 
         @Test
@@ -478,7 +530,7 @@ class FileControllerTest {
 
             verifyFileResponseDto(responseDto2, fileName2, fileDescription2, folderName, folderDescription);
             checkResponse(responseDto2, tempBucketName);
-            checkFileAndFolderInfoDBData(responseDto2, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto2, tempBucketName, true);
         }
 
         @Test
@@ -511,7 +563,7 @@ class FileControllerTest {
 
             verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkOriginalFilePath(responseDto, tempBucketName);
-            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName, true);
 
             checkImageFilePathIfPathNotExists(responseDto);
         }
@@ -660,7 +712,7 @@ class FileControllerTest {
 
             verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkResponse(responseDto, bucketName);
-            checkFileAndFolderInfoDBData(responseDto, bucketName);
+            checkFileAndFolderInfoDBData(responseDto, bucketName, false);
         }
 
         @Test
@@ -684,7 +736,7 @@ class FileControllerTest {
 
             verifyFileResponseDto(responseDto, fileName, fileDescription, folderName, folderDescription);
             checkResponse(responseDto, bucketName);
-            checkFileAndFolderInfoDBData(responseDto, bucketName);
+            checkFileAndFolderInfoDBData(responseDto, bucketName, false);
         }
 
         @Test
@@ -1245,13 +1297,16 @@ class FileControllerTest {
 
         @BeforeEach
         void setUp() throws Exception {
+            Random random = new Random();
             uploadFIleDto = uploadTextFile(fileName,
                     "This is the content of the test file",
                     fileDescription,
                     folderName,
                     folderDescription,
                     folderPath,
-                    accessToken1);
+                    accessToken1,
+                    random.nextBoolean()
+            );
         }
 
         @Test
@@ -1330,13 +1385,16 @@ class FileControllerTest {
 
         @BeforeEach
         void setUp() throws Exception {
+            Random random = new Random();
             uploadFIleDto = uploadTextFile(fileName,
                     "This is the content of the test file",
                     fileDescription,
                     folderName,
                     folderDescription,
                     folderPath,
-                    accessToken1);
+                    accessToken1,
+                    random.nextBoolean()
+            );
         }
 
         @ParameterizedTest(name = "Test {index}: Update file information with status 200 when update date is correct : {arguments}]")
@@ -1346,7 +1404,8 @@ class FileControllerTest {
                 String newFileName,
                 String newFileDescription,
                 String newFolderName,
-                String newFolderDescription) throws Exception {
+                String newFolderDescription,
+                boolean isFolderProtected) throws Exception {
 
             dto.setFileId(uploadFIleDto.getFileId());
 
@@ -1368,7 +1427,7 @@ class FileControllerTest {
 
             verifyFileResponseDto(responseDto, newFileName, newFileDescription, newFolderName, newFolderDescription);
             checkResponse(responseDto, tempBucketName);
-            checkFileAndFolderInfoDBData(responseDto, tempBucketName);
+            checkFileAndFolderInfoDBData(responseDto, tempBucketName, true, isFolderProtected);
         }
 
         private static Stream<Arguments> correctFileUpdateDtoArgs() {
@@ -1382,18 +1441,30 @@ class FileControllerTest {
                                     .fileDescription(newFileDescription)
                                     .folderName(newFolderName)
                                     .folderDescription(newFolderDescription)
+                                    .isFolderProtected(true)
                                     .build(),
                             newFileName,
                             newFileDescription,
                             newFolderName,
-                            newFolderDescription
+                            newFolderDescription,
+                            true
                     ),
                     Arguments.of(FileUpdateDto.builder()
                                     .build(),
                             fileName,
                             fileDescription,
                             folderName,
-                            folderDescription
+                            folderDescription,
+                            false
+                    ),
+                    Arguments.of(FileUpdateDto.builder()
+                                    .isFolderProtected(true)
+                                    .build(),
+                            fileName,
+                            fileDescription,
+                            folderName,
+                            folderDescription,
+                            true
                     ),
                     Arguments.of(FileUpdateDto.builder()
                                     .fileDescription(newFileDescription)
@@ -1403,7 +1474,8 @@ class FileControllerTest {
                             fileName,
                             newFileDescription,
                             newFolderName,
-                            newFolderDescription
+                            newFolderDescription,
+                            false
                     ),
                     Arguments.of(FileUpdateDto.builder()
                                     .fileName(newFileName)
@@ -1413,7 +1485,8 @@ class FileControllerTest {
                             newFileName,
                             fileDescription,
                             newFolderName,
-                            newFolderDescription
+                            newFolderDescription,
+                            false
                     ),
                     Arguments.of(FileUpdateDto.builder()
                                     .fileName(newFileName)
@@ -1423,7 +1496,8 @@ class FileControllerTest {
                             newFileName,
                             newFileDescription,
                             folderName,
-                            newFolderDescription
+                            newFolderDescription,
+                            false
                     ),
                     Arguments.of(FileUpdateDto.builder()
                                     .fileName(newFileName)
@@ -1433,16 +1507,19 @@ class FileControllerTest {
                             newFileName,
                             newFileDescription,
                             newFolderName,
-                            folderDescription
+                            folderDescription,
+                            false
                     ),
                     Arguments.of(FileUpdateDto.builder()
                                     .fileDescription(newFileDescription)
                                     .folderName(newFolderName)
+                                    .isFolderProtected(true)
                                     .build(),
                             fileName,
                             newFileDescription,
                             newFolderName,
-                            folderDescription
+                            folderDescription,
+                            true
                     )
             );
         }
@@ -1684,13 +1761,15 @@ class FileControllerTest {
 
         @BeforeEach
         void setUp() throws Exception {
+            Random random = new Random();
             uploadFIleDto = uploadTextFile(fileName,
                     "This is the content of the test file",
                     fileDescription,
                     folderName,
                     folderDescription,
                     folderPath,
-                    accessToken1);
+                    accessToken1,
+                    random.nextBoolean());
         }
 
         @Test

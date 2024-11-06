@@ -85,7 +85,7 @@ public class FileServiceImpl implements FileService {
         FolderDto newFolderDto = folderDtoMapperService.toDto(fileCreationDto);
         newFolderDto.setBucketName(tempBucketName);
 
-        final Folder folderForFile = folderService.getFolder(newFolderDto, user, tempFolder);
+        final Folder folderForFile = folderService.createNewFolder(newFolderDto, user, tempFolder);
 
         FileInfoDto fileInfoDto = new FileInfoDto(file, folderForFile, fileCreationDto.getFileDescription());
         fileInfoDto.setIsOriginalFile(true);
@@ -99,8 +99,8 @@ public class FileServiceImpl implements FileService {
 
         List<FileInfo> imgFilesInfos = createImagesForFile(
                 file,
-                folderForFile.getPath(),
-                fileInfo.getId().toString());
+                folderForFile,
+                fileInfo.getId());
 
         filesInfos.addAll(imgFilesInfos);
 
@@ -137,21 +137,19 @@ public class FileServiceImpl implements FileService {
     @Transactional
     protected List<FileInfo> createImagesForFile(
             MultipartFile file,
-            String folderPath,
-            String fileUUID) {
+            Folder folder,
+            UUID fileUUID) {
 
         final String imgFileName = fileUUID + "." + IMAGE_FORMAT;
 
         final FileActionService fileActionService = getFileActionService(file);
-
-        final Folder folder = folderService.getFolderByFolderPath(folderPath);
 
         List<FileInfoDto> fileInfoDtoList = new ArrayList<>();
 
         if (fileActionService != null) {
             Map<String, InputStream> imgFileStreams = fileActionService.getFileImages(file);
             imgFileStreams.forEach((key, value) -> {
-                Path filePath = Path.of(folderPath, key, imgFileName);
+                Path filePath = Path.of(folder.getPath(), key, imgFileName);
                 InputStreamDto dto = new InputStreamDto(
                         value,
                         key + "." + IMAGE_FORMAT,
@@ -210,15 +208,13 @@ public class FileServiceImpl implements FileService {
                             originalFileId)
             );
         }
-        String tempFilePath = tempFileInfo.getPath();
-        String folderPath = getFolderPathByFilePath(tempFilePath);
-        Folder folder = folderService.getFolderByFolderPath(folderPath);
+        Folder folder = tempFileInfo.getFolder();
 
         checkUserRights(folder, user);
 
         List<FileInfo> fileInfos = getFilesInfosByFolderIdAndOriginalFileId(folder.getId(), originalFileId);
         if (fileInfos.isEmpty()) {
-            throw new FileInFolderNotFoundException(folderPath);
+            throw new FileInFolderNotFoundException(folder.getId());
         }
         List<FileInfo> updatedFileInfo = remoteFilesInBucket(fileInfos);
 
@@ -226,6 +222,7 @@ public class FileServiceImpl implements FileService {
         dataStorageService.deleteObject(folder.getPath());
         folder.setPath(newFolderPath);
         folder.setBucketName(bucketName);
+        folder.setTemp(false);
 
         return getFileResponseDtoByFileInfos(updatedFileInfo, bucketName);
     }
@@ -321,6 +318,9 @@ public class FileServiceImpl implements FileService {
         }
         if (dto.getFolderDescription() != null) {
             folder.setDescription(dto.getFolderDescription());
+        }
+        if (dto.getIsFolderProtected() != null) {
+            folder.setProtected(dto.getIsFolderProtected());
         }
     }
 

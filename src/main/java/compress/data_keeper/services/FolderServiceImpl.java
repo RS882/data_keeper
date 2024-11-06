@@ -29,7 +29,7 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     @Transactional
-    public Folder getFolder(FolderDto dto, User user, String dirPrefix) {
+    public Folder createNewFolder(FolderDto dto, User user, String dirPrefix) {
         folderPrefix = dirPrefix;
         if (dto == null) {
             return createFolder(user);
@@ -67,13 +67,13 @@ public class FolderServiceImpl implements FolderService {
                 .name(folderName)
                 .description(dto.getDescription())
                 .bucketName(dto.getBucketName())
+                .isProtected(dto.isFolderProtected())
                 .owner(user)
                 .build();
         return createFolder(folder);
     }
 
     private Folder createFolder(Folder folder) {
-
         Folder savedFolder = folderRepository.save(folder);
         String folderPath = dataStorageService.createFolderPath(
                 savedFolder.getId().toString(),
@@ -81,10 +81,11 @@ public class FolderServiceImpl implements FolderService {
                 folderPrefix
         );
         savedFolder.setPath(folderPath);
+        savedFolder.setTemp(true);
         return savedFolder;
     }
 
-    private String getDefaultFolderName(){
+    private String getDefaultFolderName() {
         return DEFAULT_FOLDER_PREFIX_NAME + LocalDateTime.now();
     }
 }

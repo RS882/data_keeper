@@ -30,4 +30,8 @@ public class FileCreationDto {
 
     @Schema(description = "Path of folder", example = "http://bucket/isiisi/23")
     private String folderPath;
+
+    @Schema(description = "Is folder protected from deleting or not", examples = {"false", "true"}, defaultValue = "false")
+    @Builder.Default
+    private Boolean isFolderProtected = false;
 }

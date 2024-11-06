@@ -3,12 +3,14 @@ package compress.data_keeper.domain.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "file_info")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,7 +25,7 @@ public class FileInfo extends EntityInfo {
     @Column(name = "hash", length = 512)
     private String hash;
 
-    @Column(name="is_original_file")
+    @Column(name = "is_original_file")
     private Boolean isOriginalFile;
 
     @ManyToOne(fetch = FetchType.EAGER)
