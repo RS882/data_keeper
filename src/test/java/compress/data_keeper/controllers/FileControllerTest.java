@@ -102,8 +102,6 @@ class FileControllerTest {
     private String adminAccessToken;
     private Long currentAdminId;
 
-    private List<String> uploadedObjectPath = new ArrayList<>();
-
     private static final String USER1_EMAIL = "Test1" + "@example.com";
     private static final String USER1_PASSWORD = "Querty123!";
     private static final String TEST_USER_NAME_1 = "TestName1";
@@ -195,7 +193,6 @@ class FileControllerTest {
         String jsonResponse2 = result2.getResponse().getContentAsString();
         TokenResponseDto responseDto2 = mapper.readValue(jsonResponse2, TokenResponseDto.class);
         accessToken2 = responseDto2.getAccessToken();
-        currentUserId2 = responseDto2.getUserId();
     }
 
     @Transactional

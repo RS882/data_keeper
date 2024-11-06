@@ -34,6 +34,8 @@ public interface FileService {
 
     List<FileInfo> findFilesInfosByFolderIdAndOriginalFileId(UUID folderId, UUID fileId);
 
+    List<FileInfo> findAllFilesInfosByFilesId(List<UUID> filesId);
+
     void deleteAllFileInfosByFolderId(UUID folderId);
 
     void deleteFileById(UUID id, User currentUser);

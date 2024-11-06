@@ -36,7 +36,7 @@ key:
   access: ${ACCESS_SECRET}
   refresh: ${REFRESH_SECRET}
 scheduler:
-  interval: ${SECOND_INTERVAL:2}
+  interval: ${SECOND_INTERVAL:4}
 
 
 

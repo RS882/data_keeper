@@ -27,9 +27,9 @@ public interface FileInfoRepository extends JpaRepository<FileInfo, UUID> {
     @Query("SELECT f FROM FileInfo f JOIN f.folder fol WHERE fol.owner.id = :userId AND f.isOriginalFile = true")
     Page<FileInfo> findOriginalFilesByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT f FROM FileInfo f WHERE f.bucketName = :bucketName " +
-            "AND (f.createdAt < :cutoffTime OR " +
-            "(f.updatedAt IS NOT NULL AND f.updatedAt > f.createdAt AND f.updatedAt < :cutoffTime))")
+    @Query("SELECT f FROM FileInfo f WHERE f.bucketName = :bucketName "
+            + "AND (f.createdAt < :cutoffTime "
+            + "OR (f.updatedAt IS NOT NULL AND f.updatedAt > f.createdAt AND f.updatedAt < :cutoffTime))")
     List<FileInfo> findOldTempFilesInfos(
             @Param("bucketName") String bucketName,
             @Param("cutoffTime") LocalDateTime cutoffTime);

@@ -1,4 +1,4 @@
-package compress.data_keeper.sheduler;
+package compress.data_keeper.scheduler;
 
 import compress.data_keeper.domain.entity.EntityInfo;
 import compress.data_keeper.domain.entity.FileInfo;

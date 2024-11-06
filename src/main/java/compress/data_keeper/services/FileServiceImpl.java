@@ -376,6 +376,11 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public List<FileInfo> findAllFilesInfosByFilesId(List<UUID> filesId) {
+        return fileInfoRepository.findAllById(filesId);
+    }
+
+    @Override
     public void deleteAllFileInfosByFolderId(UUID folderId) {
         fileInfoRepository.deleteAllByFolderId(folderId);
     }
@@ -400,7 +405,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public List<FileInfo> findOldTempFiles(String bucketName, long secondsInterval) {
-         return fileInfoRepository.findOldTempFilesInfos(
+           return fileInfoRepository.findOldTempFilesInfos(
                  bucketName,
                  LocalDateTime.now().minusSeconds(secondsInterval));
     }
