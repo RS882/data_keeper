@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static compress.data_keeper.services.utilities.FileUtilities.toUnixStylePath;
 
@@ -48,6 +49,11 @@ public class FolderServiceImpl implements FolderService {
     public Folder getFolderByFolderPath(String folderPath) {
         return folderRepository.findByPath(toUnixStylePath(folderPath))
                 .orElseThrow(() -> new FolderNotFoundException(folderPath));
+    }
+
+    @Override
+    public void deleteAllEmptyUnprotectedFolders() {
+        folderRepository.deleteAllEmpty();
     }
 
     private Folder createFolder(User user) {

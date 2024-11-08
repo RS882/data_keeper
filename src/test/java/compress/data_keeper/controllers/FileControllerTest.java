@@ -149,50 +149,37 @@ class FileControllerTest {
     }
 
     private void loginUser1() throws Exception {
-        UserRegistrationDto dto1 = UserRegistrationDto
-                .builder()
-                .email(USER1_EMAIL)
-                .userName(TEST_USER_NAME_1)
-                .password(USER1_PASSWORD)
-                .build();
-        userRepository.save(mapperService.toEntity(dto1));
-        String dtoJson1 = mapper.writeValueAsString(
-                LoginDto.builder()
-                        .email(USER1_EMAIL)
-                        .password(USER1_PASSWORD)
-                        .build());
-        MvcResult result1 = mockMvc.perform(post(LOGIN_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(dtoJson1))
-                .andExpect(status().isOk())
-                .andReturn();
-        String jsonResponse1 = result1.getResponse().getContentAsString();
-        TokenResponseDto responseDto1 = mapper.readValue(jsonResponse1, TokenResponseDto.class);
-        accessToken1 = responseDto1.getAccessToken();
-        currentUserId1 = responseDto1.getUserId();
+        TokenResponseDto responseDto = loginUser(USER1_EMAIL, TEST_USER_NAME_1, USER1_PASSWORD);
+        accessToken1 = responseDto.getAccessToken();
+        currentUserId1 = responseDto.getUserId();
     }
 
     private void loginUser2() throws Exception {
-        UserRegistrationDto dto2 = UserRegistrationDto
+        TokenResponseDto responseDto = loginUser(USER2_EMAIL, TEST_USER_NAME_2, USER2_PASSWORD);
+        accessToken2 = responseDto.getAccessToken();
+        currentUserId2 = responseDto.getUserId();
+    }
+
+    private TokenResponseDto loginUser(String email, String name, String password) throws Exception {
+        UserRegistrationDto dto = UserRegistrationDto
                 .builder()
-                .email(USER2_EMAIL)
-                .userName(TEST_USER_NAME_2)
-                .password(USER2_PASSWORD)
+                .email(email)
+                .userName(name)
+                .password(password)
                 .build();
-        userRepository.save(mapperService.toEntity(dto2));
-        String dtoJson2 = mapper.writeValueAsString(
+        userRepository.save(mapperService.toEntity(dto));
+        String dtoJson = mapper.writeValueAsString(
                 LoginDto.builder()
-                        .email(USER2_EMAIL)
-                        .password(USER2_PASSWORD)
+                        .email(email)
+                        .password(password)
                         .build());
-        MvcResult result2 = mockMvc.perform(post(LOGIN_URL)
+        MvcResult result = mockMvc.perform(post(LOGIN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(dtoJson2))
+                        .content(dtoJson))
                 .andExpect(status().isOk())
                 .andReturn();
-        String jsonResponse2 = result2.getResponse().getContentAsString();
-        TokenResponseDto responseDto2 = mapper.readValue(jsonResponse2, TokenResponseDto.class);
-        accessToken2 = responseDto2.getAccessToken();
+        String jsonResponse = result.getResponse().getContentAsString();
+        return mapper.readValue(jsonResponse, TokenResponseDto.class);
     }
 
     @Transactional

@@ -9,4 +9,6 @@ public interface FolderService {
     Folder createNewFolder(FolderDto dto, User user, String dirPrefix);
 
     Folder getFolderByFolderPath(String path);
+
+    void deleteAllEmptyUnprotectedFolders();
 }
