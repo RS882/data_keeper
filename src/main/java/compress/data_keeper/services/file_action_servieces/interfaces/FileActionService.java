@@ -2,6 +2,7 @@ package compress.data_keeper.services.file_action_servieces.interfaces;
 
 import compress.data_keeper.exception_handler.bad_requeat.exceptions.TextIsNullException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
+import compress.data_keeper.services.utilities.FileUtilities;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -11,12 +12,23 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 
 public interface FileActionService {
 
     Map<String, InputStream> getFileImages(MultipartFile file);
+
+    default Map<String, InputStream> getFileImagesByTxt(String content) {
+        BufferedImage image = convertTextToImage(content, 40);
+        return IMAGE_SIZES.stream()
+                .collect(Collectors.toMap(
+                        FileUtilities::getNameFromSizes,
+                        size -> compressImg(image, size)
+                ));
+    }
 
     default BufferedImage convertTextToImage(String text, int linesPerPage) {
 
@@ -49,7 +61,6 @@ public interface FileActionService {
 
         ByteArrayOutputStream outputStream;
         try {
-
             int originalWidth = image.getWidth();
             int originalHeight = image.getHeight();
 

@@ -104,6 +104,7 @@ public class AuthServiceImpl implements AuthService {
 
             log.warn("User {} has limit of logins :{}.", userId, MAX_COUNT_OF_LOGINS);
             log.warn("User {} logins blocked until:{}.", userId, user.getLoginBlockedUntil());
+
         }
     }
 
