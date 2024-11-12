@@ -2,8 +2,10 @@ package compress.data_keeper.services.file_action_servieces;
 
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.services.file_action_servieces.checked_function.CheckedFunction;
-import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
-
+import compress.data_keeper.services.file_action_servieces.office_file_strategy.ExcelFileProcessor;
+import compress.data_keeper.services.file_action_servieces.office_file_strategy.FileProcessorStrategy;
+import compress.data_keeper.services.file_action_servieces.office_file_strategy.PowerPointFileProcessor;
+import compress.data_keeper.services.file_action_servieces.office_file_strategy.WordFileProcessor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -26,36 +28,32 @@ import static compress.data_keeper.services.file_action_servieces.checked_functi
 
 @Service
 @Slf4j
-public class OOXMLFileActionServiceImp implements FileActionService {
+public class OOXMLFileActionServiceImp extends FileActionService {
+
     @Override
     public Map<String, InputStream> getFileImages(MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
             inputStream.mark(Integer.MAX_VALUE);
-            Map<String, FileProcessorStrategy> fileProcessors = Map.of(
-                    "excel", new ExcelFileProcessor(),
-                    "powerpoint", new PowerPointFileProcessor(),
-                    "word", new WordFileProcessor()
-            );
-            String fileType = getFileType(inputStream);
-            FileProcessorStrategy processor = fileProcessors.get(fileType);
+
+            FileProcessorStrategy processor = getProcessor(inputStream);
             return processor != null ? processor.process(inputStream) : Map.of();
         } catch (IOException e) {
             throw new ServerIOException("Error processing file");
         }
     }
 
-    private String getFileType(InputStream inputStream) throws IOException {
+    private FileProcessorStrategy getProcessor(InputStream inputStream) throws IOException {
 
         if (isFileType(inputStream, XSSFWorkbook::new)) {
-            return "excel";
+            return new ExcelFileProcessor();
         }
         if (isFileType(inputStream, XMLSlideShow::new)) {
-            return "powerpoint";
+            return new PowerPointFileProcessor();
         }
         if (isFileType(inputStream, XWPFDocument::new)) {
-            return "word";
+            return new WordFileProcessor();
         }
-        return "unknown file type";
+        return null;
     }
 
     private boolean isFileType(InputStream inputStream, CheckedFunction<InputStream, ?> fileCreator) {
@@ -95,50 +93,6 @@ public class OOXMLFileActionServiceImp implements FileActionService {
             contentStream.endText();
             contentStream.close();
             pdfDocument.save(outputStream);
-        }
-    }
-
-    private String convertDocxToTxt(XWPFDocument docx) {
-        StringBuilder text = new StringBuilder();
-        docx.getParagraphs().forEach(p -> text.append(p.getText()).append("\n"));
-        return text.toString();
-    }
-
-    interface FileProcessorStrategy {
-        Map<String, InputStream> process(InputStream inputStream);
-    }
-
-    class ExcelFileProcessor implements FileProcessorStrategy {
-        @Override
-        public Map<String, InputStream> process(InputStream inputStream) {
-            try (XSSFWorkbook excel = new XSSFWorkbook(inputStream)) {
-                return Map.of();
-            } catch (IOException e) {
-                throw new ServerIOException(e.getMessage());
-            }
-        }
-    }
-
-    class PowerPointFileProcessor implements FileProcessorStrategy {
-        @Override
-        public Map<String, InputStream> process(InputStream inputStream) {
-            try (XMLSlideShow ppt = new XMLSlideShow(inputStream)) {
-                return Map.of();
-            } catch (IOException e) {
-                throw new ServerIOException(e.getMessage());
-            }
-        }
-    }
-
-    class WordFileProcessor implements FileProcessorStrategy {
-        @Override
-        public Map<String, InputStream> process(InputStream inputStream) {
-            try (XWPFDocument docx = new XWPFDocument(inputStream)) {
-                String content = convertDocxToTxt(docx);
-                return getFileImagesByTxt(content);
-            } catch (IOException e) {
-                throw new ServerIOException(e.getMessage());
-            }
         }
     }
 }

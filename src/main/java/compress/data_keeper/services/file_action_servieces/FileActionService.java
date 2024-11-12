@@ -1,4 +1,4 @@
-package compress.data_keeper.services.file_action_servieces.interfaces;
+package compress.data_keeper.services.file_action_servieces;
 
 import compress.data_keeper.exception_handler.bad_requeat.exceptions.TextIsNullException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
@@ -17,11 +17,11 @@ import java.util.stream.Collectors;
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 
-public interface FileActionService {
+public abstract class   FileActionService {
 
-    Map<String, InputStream> getFileImages(MultipartFile file);
+    public abstract Map<String, InputStream> getFileImages(MultipartFile file);
 
-    default Map<String, InputStream> getFileImagesByTxt(String content) {
+     public static Map<String, InputStream> getFileImagesByTxt(String content) {
         BufferedImage image = convertTextToImage(content, 40);
         return IMAGE_SIZES.stream()
                 .collect(Collectors.toMap(
@@ -30,7 +30,7 @@ public interface FileActionService {
                 ));
     }
 
-    default BufferedImage convertTextToImage(String text, int linesPerPage) {
+    public static BufferedImage convertTextToImage(String text, int linesPerPage) {
 
         if (text == null) {
             throw new TextIsNullException();
@@ -57,7 +57,7 @@ public interface FileActionService {
         return image;
     }
 
-    default InputStream compressImg(BufferedImage image, int[] size) {
+    public static InputStream compressImg(BufferedImage image, int[] size) {
 
         ByteArrayOutputStream outputStream;
         try {

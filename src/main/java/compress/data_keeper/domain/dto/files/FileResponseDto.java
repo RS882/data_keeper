@@ -39,6 +39,9 @@ public class FileResponseDto {
     @Schema(description = "File description", example = "My new file")
     private String fileDescription;
 
+    @Schema(description = "File type", example = "text/pain")
+    private String fileType;
+
     @Schema(description = "Folder name", example = "Files for study")
     private String folderName;
 
@@ -52,8 +55,10 @@ public class FileResponseDto {
             @JsonProperty("fileId") UUID fileId,
             @JsonProperty("fileName") String fileName,
             @JsonProperty("fileDescription") String fileDescription,
+            @JsonProperty("fileType") String fileType,
             @JsonProperty("folderName") String folderName,
-            @JsonProperty("folderDescription") String folderDescription) {
+            @JsonProperty("folderDescription") String folderDescription
+           ) {
         this.linksToFiles = linksToFiles;
         this.linksIsValidUntil = linksIsValidUntil;
         this.fileId = fileId;
@@ -61,5 +66,6 @@ public class FileResponseDto {
         this.fileDescription = fileDescription;
         this.folderName = folderName;
         this.folderDescription = folderDescription;
+        this.fileType = fileType;
     }
 }

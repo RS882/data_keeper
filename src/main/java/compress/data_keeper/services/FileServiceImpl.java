@@ -14,7 +14,7 @@ import compress.data_keeper.exception_handler.not_found.exceptions.FileInFolderN
 import compress.data_keeper.exception_handler.not_found.exceptions.FileInfoNotFoundException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
 import compress.data_keeper.repository.FileInfoRepository;
-import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
+import compress.data_keeper.services.file_action_servieces.FileActionService;
 import compress.data_keeper.services.interfaces.DataStorageService;
 import compress.data_keeper.services.interfaces.FileService;
 import compress.data_keeper.services.interfaces.FolderService;

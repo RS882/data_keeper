@@ -24,9 +24,9 @@ public abstract class FileInfoMapperService {
     @Mapping(target = "bucketName", source = "bucketName")
     @Mapping(target = "type", source = "fileType")
     @Mapping(target = "hash", expression = "java(getHash(dto))")
-    @Mapping(target ="id", ignore = true)
-    @Mapping(target ="createdAt", ignore = true)
-    @Mapping(target ="updatedAt", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     public abstract FileInfo mapCommonFields(FileInfoDto dto);
 
     protected String getHash(FileInfoDto dto) {
@@ -49,11 +49,12 @@ public abstract class FileInfoMapperService {
     @Mapping(target = "isLastPage", source = "fileInfoPage.last")
     public abstract FileResponseDtoWithPagination toFileResponseDtoWithPagination(Page<FileInfo> fileInfoPage);
 
-    @Mapping(source = "fileInfo.id", target = "fileId")
-    @Mapping(source = "fileInfo.name", target = "fileName")
-    @Mapping(source = "fileInfo.description", target = "fileDescription")
-    @Mapping(source = "fileInfo.folder.name", target = "folderName")
-    @Mapping(source = "fileInfo.folder.description", target = "folderDescription")
+    @Mapping(target = "fileId", source = "id")
+    @Mapping(target = "fileName", source = "name")
+    @Mapping(target = "fileDescription", source = "description")
+    @Mapping(target = "folderName", source = "folder.name")
+    @Mapping(target = "folderDescription", source = "folder.description")
+    @Mapping(target = "fileType", source = "type")
     public abstract FileResponseDto toDto(FileInfo fileInfo);
 }
 

@@ -2,9 +2,8 @@ package compress.data_keeper.services.utilities;
 
 import compress.data_keeper.services.file_action_servieces.OOXMLFileActionServiceImp;
 import compress.data_keeper.services.file_action_servieces.TextFileActionServiceImpl;
-import compress.data_keeper.services.file_action_servieces.interfaces.FileActionService;
+import compress.data_keeper.services.file_action_servieces.FileActionService;
 import org.junit.jupiter.api.*;
-import org.mockito.InjectMocks;
 import org.springframework.http.MediaType;
 
 import static compress.data_keeper.services.utilities.FileActionUtilities.OOXML_FILE_TYPE;
