@@ -17,12 +17,16 @@ import java.util.stream.Collectors;
 import static compress.data_keeper.constants.ImgConstants.IMAGE_SIZES;
 import static compress.data_keeper.constants.MediaFormats.IMAGE_FORMAT;
 
-public abstract class   FileActionService {
+public abstract class FileActionService {
 
     public abstract Map<String, InputStream> getFileImages(MultipartFile file);
 
-     public static Map<String, InputStream> getFileImagesByTxt(String content) {
+    public static Map<String, InputStream> getFileImagesByTxt(String content) {
         BufferedImage image = convertTextToImage(content, 40);
+        return getFileImagesByImg(image);
+    }
+
+    public static Map<String, InputStream> getFileImagesByImg(BufferedImage image) {
         return IMAGE_SIZES.stream()
                 .collect(Collectors.toMap(
                         FileUtilities::getNameFromSizes,

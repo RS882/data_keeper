@@ -28,7 +28,7 @@ import static compress.data_keeper.services.file_action_servieces.checked_functi
 
 @Service
 @Slf4j
-public class OOXMLFileActionServiceImp extends FileActionService {
+public class OOXMLFileActionService extends FileActionService {
 
     @Override
     public Map<String, InputStream> getFileImages(MultipartFile file) {

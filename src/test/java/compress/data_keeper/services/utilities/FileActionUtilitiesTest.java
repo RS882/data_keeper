@@ -1,7 +1,7 @@
 package compress.data_keeper.services.utilities;
 
-import compress.data_keeper.services.file_action_servieces.OOXMLFileActionServiceImp;
-import compress.data_keeper.services.file_action_servieces.TextFileActionServiceImpl;
+import compress.data_keeper.services.file_action_servieces.OOXMLFileActionService;
+import compress.data_keeper.services.file_action_servieces.TextFileActionService;
 import compress.data_keeper.services.file_action_servieces.FileActionService;
 import org.junit.jupiter.api.*;
 import org.springframework.http.MediaType;
@@ -24,7 +24,7 @@ class FileActionUtilitiesTest {
 
             FileActionService fileActionService = getFileActionServiceByContentType(contentType);
             assertNotNull(fileActionService);
-            assertInstanceOf(TextFileActionServiceImpl.class, fileActionService);
+            assertInstanceOf(TextFileActionService.class, fileActionService);
         }
 
         @Test
@@ -33,7 +33,7 @@ class FileActionUtilitiesTest {
 
             FileActionService fileActionService = getFileActionServiceByContentType(contentType);
             assertNotNull(fileActionService);
-            assertInstanceOf(OOXMLFileActionServiceImp.class, fileActionService);
+            assertInstanceOf(OOXMLFileActionService.class, fileActionService);
         }
 
         @Test

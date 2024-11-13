@@ -2,7 +2,7 @@ package compress.data_keeper.services.file_action_servieces.interfaces;
 
 import compress.data_keeper.exception_handler.bad_requeat.exceptions.TextIsNullException;
 import compress.data_keeper.exception_handler.server_exception.ServerIOException;
-import compress.data_keeper.services.file_action_servieces.TextFileActionServiceImpl;
+import compress.data_keeper.services.file_action_servieces.TextFileActionService;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FileActionServiceTest {
 
     @InjectMocks
-    private TextFileActionServiceImpl service;
+    private TextFileActionService service;
 
     @Nested
     @DisplayName("Convert text to image test")
